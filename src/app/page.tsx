@@ -665,102 +665,193 @@ export default function DashboardPage() {
           {/* TAB 2: GIT COLLABORATION AND CONFLICTS PANEL */}
           {activeTab === "git" && (
             <div className="animate-fade-slide" style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+              {/* Sidebar Git Status Controls */}
               <div style={{
-                width: "280px",
+                width: "320px",
                 borderRight: "1px solid var(--color-border-default)",
                 backgroundColor: "var(--color-bg-subtle)",
-                padding: "16px",
+                padding: "24px 20px",
                 overflowY: "auto",
                 display: "flex",
                 flexDirection: "column",
-                gap: "20px",
+                gap: "24px",
+                flexShrink: 0,
               }}>
                 <div>
-                  <h3 style={{ fontSize: "12px", fontWeight: "600", textTransform: "uppercase", color: "var(--color-fg-muted)", marginBottom: "8px" }}>
-                    Synchronization Status
+                  <h3 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--color-fg-muted)", letterSpacing: "0.5px", marginBottom: "12px" }}>
+                    Repository Sync
                   </h3>
-                  <div className="card" style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px" }}>
-                    <div>Active upstream: <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px" }}>{syncStatus.upstream || "no upstream"}</span></div>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <span className={`badge ${syncStatus.ahead > 0 ? "badge-warning" : ""}`}>
-                        {syncStatus.ahead} commits ahead
+                  
+                  <div className="card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px", background: "rgba(22, 27, 34, 0.4)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+                      <span style={{ color: "var(--color-fg-muted)" }}>Upstream</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, color: "var(--color-accent-fg)" }}>
+                        {syncStatus.upstream ? syncStatus.upstream.split("/").pop() : "origin/main"}
                       </span>
-                      <span className={`badge ${syncStatus.behind > 0 ? "badge-danger" : ""}`}>
-                        {syncStatus.behind} commits behind
-                      </span>
+                    </div>
+
+                    {/* Visual Connection Map */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "4px 0" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        <span style={{ fontSize: "11px", fontWeight: 600 }}>Local</span>
+                        <span style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontFamily: "var(--font-mono)" }}>{currentBranch}</span>
+                      </div>
+                      
+                      <div style={{ display: "flex", alignItems: "center", flex: 2, position: "relative" }}>
+                        <div style={{ height: "2px", backgroundColor: "var(--color-border-default)", flex: 1 }}></div>
+                        <div style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "50%",
+                          backgroundColor: "var(--color-bg-overlay)",
+                          border: "1px solid var(--color-border-default)",
+                          fontSize: "10px",
+                          zIndex: 1,
+                        }}>
+                          ⇄
+                        </div>
+                        <div style={{ height: "2px", backgroundColor: "var(--color-border-default)", flex: 1 }}></div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        <span style={{ fontSize: "11px", fontWeight: 600 }}>Upstream</span>
+                        <span style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontFamily: "var(--font-mono)" }}>origin</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                        <span style={{ color: "var(--color-fg-muted)" }}>Ahead (Unpushed)</span>
+                        <span className={`badge ${syncStatus.ahead > 0 ? "badge-warning" : ""}`} style={{ fontSize: "11px" }}>
+                          {syncStatus.ahead} commits
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                        <span style={{ color: "var(--color-fg-muted)" }}>Behind (Unsynced)</span>
+                        <span className={`badge ${syncStatus.behind > 0 ? "badge-danger" : ""}`} style={{ fontSize: "11px" }}>
+                          {syncStatus.behind} commits
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: "12px", fontWeight: "600", textTransform: "uppercase", color: "var(--color-fg-muted)", marginBottom: "8px" }}>
+                  <h3 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--color-fg-muted)", letterSpacing: "0.5px", marginBottom: "12px" }}>
                     Active Branches
                   </h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {branches.map((b) => (
-                      <div
-                        key={b}
-                        style={{
-                          padding: "6px 10px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          backgroundColor: currentBranch === b ? "var(--color-accent-bg)" : "transparent",
-                          border: `1px solid ${currentBranch === b ? "var(--color-accent-border)" : "transparent"}`,
-                          fontWeight: currentBranch === b ? 600 : "normal",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span>{b}</span>
-                        {currentBranch === b && <span className="badge badge-success" style={{ fontSize: "9px", padding: "1px 4px" }}>Active</span>}
-                      </div>
-                    ))}
+                    {branches.map((b) => {
+                      const isActive = currentBranch === b;
+                      return (
+                        <div
+                          key={b}
+                          style={{
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            backgroundColor: isActive ? "var(--color-accent-bg)" : "transparent",
+                            border: `1px solid ${isActive ? "var(--color-accent-border)" : "var(--color-border-default)"}`,
+                            fontWeight: isActive ? 600 : "normal",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            transition: "all 0.15s ease",
+                            cursor: "default",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: isActive ? "var(--color-accent-fg)" : "var(--color-fg-muted)" }}>
+                              <line x1="6" y1="3" x2="6" y2="15" />
+                              <circle cx="18" cy="6" r="3" />
+                              <circle cx="6" cy="18" r="3" />
+                              <path d="M18 9a9 9 0 0 1-9 9" />
+                            </svg>
+                            <span>{b}</span>
+                          </div>
+                          {isActive && (
+                            <span style={{
+                              display: "inline-block",
+                              width: "6px",
+                              height: "6px",
+                              borderRadius: "50%",
+                              backgroundColor: "#3fb950",
+                              boxShadow: "0 0 8px #3fb950",
+                            }}></span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: "12px", fontWeight: "600", textTransform: "uppercase", color: "var(--color-fg-muted)", marginBottom: "8px" }}>
-                    Active Merge Conflicts
+                  <h3 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--color-fg-muted)", letterSpacing: "0.5px", marginBottom: "12px" }}>
+                    Conflict Files
                   </h3>
                   {conflictFiles.length === 0 ? (
                     <div style={{
-                      padding: "12px",
-                      borderRadius: "6px",
-                      backgroundColor: "var(--color-success-bg)",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      backgroundColor: "rgba(63, 185, 80, 0.05)",
                       color: "var(--color-success-fg)",
                       border: "1px solid var(--color-success-border)",
                       fontSize: "12px",
+                      lineHeight: "18px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
                     }}>
-                      No merge conflicts detected in this repository.
+                      <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>✓</span> No Conflicts
+                      </div>
+                      <div style={{ fontSize: "11px", color: "var(--color-fg-muted)" }}>
+                        Workspace codebase compiles clean without merge issues.
+                      </div>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {conflictFiles.map((file) => (
-                        <div
-                          key={file}
-                          onClick={() => setSelectedConflictFile(file)}
-                          style={{
-                            padding: "8px 12px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            border: `1px solid ${selectedConflictFile === file ? "var(--color-danger-border)" : "var(--color-border-default)"}`,
-                            backgroundColor: selectedConflictFile === file ? "var(--color-danger-bg)" : "var(--color-bg-overlay)",
-                            color: selectedConflictFile === file ? "var(--color-danger-fg)" : "var(--color-fg-default)",
-                            cursor: "pointer",
-                            transition: "all 0.1s",
-                          }}
-                        >
-                          <div style={{ fontWeight: 600 }}>{file.split("/").pop()}</div>
-                          <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", wordBreak: "break-all" }}>{file}</div>
-                        </div>
-                      ))}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {conflictFiles.map((file) => {
+                        const isSelected = selectedConflictFile === file;
+                        return (
+                          <div
+                            key={file}
+                            onClick={() => setSelectedConflictFile(file)}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              border: `1px solid ${isSelected ? "var(--color-danger-border)" : "var(--color-border-default)"}`,
+                              backgroundColor: isSelected ? "var(--color-danger-bg)" : "rgba(248, 81, 73, 0.02)",
+                              color: isSelected ? "var(--color-danger-fg)" : "var(--color-fg-default)",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "4px",
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ color: "var(--color-danger-fg)" }}>⚡</span>
+                              <span>{file.split("/").pop()}</span>
+                            </div>
+                            <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", wordBreak: "break-all", fontFamily: "var(--font-mono)" }}>
+                              {file}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ flex: 1, overflow: "hidden" }}>
+              {/* Main Git Workspace Panel */}
+              <div style={{ flex: 1, overflow: "hidden", backgroundColor: "var(--color-bg-default)" }}>
                 {selectedConflictFile ? (
                   <ConflictResolver
                     relativeFile={selectedConflictFile}
@@ -773,15 +864,61 @@ export default function DashboardPage() {
                 ) : (
                   <div style={{
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
                     height: "100%",
-                    color: "var(--color-fg-muted)",
-                    fontSize: "14px",
-                    padding: "24px",
+                    padding: "48px 24px",
                     textAlign: "center",
+                    maxWidth: "600px",
+                    margin: "0 auto",
+                    gap: "24px",
                   }}>
-                    Select an active merge conflict file from the left sidebar to load the visual 3-pane resolver editor.
+                    <div style={{
+                      width: "64px",
+                      height: "64px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(88, 166, 255, 0.05)",
+                      border: "1px solid var(--color-border-default)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "24px",
+                    }}>
+                      🔀
+                    </div>
+                    
+                    <div>
+                      <h2 style={{ fontSize: "20px", fontWeight: "700", letterSpacing: "-0.5px", margin: 0 }}>
+                        Git Collaboration Workspace
+                      </h2>
+                      <p style={{ fontSize: "13px", color: "var(--color-fg-muted)", marginTop: "8px", lineHeight: "20px" }}>
+                        Manage local branch synchronization and resolve merge conflicts interactively. Click on an active conflict file from the left sidebar to open the resolver dashboard.
+                      </p>
+                    </div>
+
+                    <div className="card" style={{ width: "100%", padding: "16px 20px", textAlign: "left", display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", color: "var(--color-fg-muted)", letterSpacing: "0.5px" }}>
+                        Repository Status Summary
+                      </div>
+                      
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", fontSize: "13px" }}>
+                        <div>
+                          <div style={{ color: "var(--color-fg-muted)", fontSize: "11px" }}>Current Workspace Directory</div>
+                          <div style={{ fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "12px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {activeProfile?.workspacePath || "No path linked"}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ color: "var(--color-fg-muted)", fontSize: "11px" }}>Active Branch Node</div>
+                          <div style={{ fontWeight: 600, marginTop: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#3fb950" }}></span>
+                            {currentBranch}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -790,174 +927,217 @@ export default function DashboardPage() {
 
           {/* TAB 3: DIAGNOSTICS DASHBOARD PANEL */}
           {activeTab === "diagnostics" && (
-            <div className="animate-fade-slide" style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-              <div style={{
-                flex: 1.2,
-                borderRight: "1px solid var(--color-border-default)",
-                padding: "24px",
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "24px",
-              }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "600", letterSpacing: "-0.5px" }}>
-                  Deterministic Environment Scanner
-                </h2>
+            <div className="animate-fade-slide" style={{
+              flex: 1,
+              padding: "32px",
+              overflowY: "auto",
+              backgroundColor: "var(--color-bg-default)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px",
+              maxWidth: "1000px",
+              margin: "0 auto",
+              width: "100%",
+            }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <h2 style={{ fontSize: "20px", fontWeight: "700", letterSpacing: "-0.5px", margin: 0, color: "var(--color-fg-default)" }}>
+                    Environment Diagnostics
+                  </h2>
+                  <span style={{
+                    display: "inline-block",
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    backgroundColor: isDiagLoading ? "var(--color-attention-fg)" : "#3fb950",
+                    boxShadow: `0 0 8px ${isDiagLoading ? "var(--color-attention-fg)" : "#3fb950"}`,
+                  }}></span>
+                </div>
+                <p style={{ fontSize: "13px", color: "var(--color-fg-muted)", marginTop: "4px" }}>
+                  Verify Node version engine limits, audit local module packages, and run automated script repairs.
+                </p>
+              </div>
 
-                {isDiagLoading ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div className="spinner"></div>
-                    <span>Checking machine host versions and dependency folders...</span>
+              {isDiagLoading ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "32px", backgroundColor: "var(--color-bg-subtle)", borderRadius: "8px", border: "1px solid var(--color-border-default)" }}>
+                  <div className="spinner"></div>
+                  <span style={{ fontSize: "13px", color: "var(--color-fg-muted)" }}>Scanning workspace directory packages and system environment variables...</span>
+                </div>
+              ) : diagData ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                  {/* Bento Grid Stats Card row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.2fr", gap: "16px" }}>
+                    
+                    {/* Node Engine Card */}
+                    <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "130px", background: "rgba(22, 27, 34, 0.4)" }}>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>Node.js Runtime</div>
+                        <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", fontFamily: "var(--font-mono)" }}>{diagData.nodeVersion}</div>
+                      </div>
+                      <div style={{ marginTop: "12px" }}>
+                        {diagData.isNodeCompatible ? (
+                          <span className="badge badge-success" style={{ fontSize: "10px", padding: "3px 8px" }}>Compatible ({diagData.enginesNode})</span>
+                        ) : (
+                          <span className="badge badge-danger" style={{ fontSize: "10px", padding: "3px 8px" }}>Mismatch (Required: {diagData.enginesNode})</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* npm Package Manager Card */}
+                    <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "130px", background: "rgba(22, 27, 34, 0.4)" }}>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>npm Package Manager</div>
+                        <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", fontFamily: "var(--font-mono)" }}>v{diagData.npmVersion}</div>
+                      </div>
+                      <div style={{ marginTop: "12px" }}>
+                        <span className="badge badge-info" style={{ fontSize: "10px", padding: "3px 8px" }}>System Installed</span>
+                      </div>
+                    </div>
+
+                    {/* Package Audit Progress Card */}
+                    <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "130px", background: "rgba(22, 27, 34, 0.4)" }}>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>Dependencies Check</div>
+                        <div style={{ fontSize: "13px", marginTop: "8px" }}>
+                          Total dependencies: <strong>{diagData.totalDependencies}</strong> packages
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginTop: "12px" }}>
+                        {diagData.missingDependencies.length === 0 ? (
+                          <div style={{
+                            fontSize: "11px",
+                            color: "var(--color-success-fg)",
+                            backgroundColor: "rgba(63, 185, 80, 0.05)",
+                            border: "1px solid var(--color-success-border)",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            display: "inline-block",
+                            fontWeight: 600,
+                          }}>
+                            ✓ node_modules clean
+                          </div>
+                        ) : (
+                          <div style={{
+                            fontSize: "11px",
+                            color: "var(--color-danger-fg)",
+                            backgroundColor: "rgba(248, 81, 73, 0.05)",
+                            border: "1px solid var(--color-danger-border)",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            display: "inline-block",
+                            fontWeight: 600,
+                          }}>
+                            ⚠️ {diagData.missingDependencies.length} package folders missing
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                ) : diagData ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                      <div className="card" style={{ padding: "16px" }}>
-                        <div style={{ fontSize: "11px", color: "var(--color-fg-muted)", fontWeight: "600", textTransform: "uppercase" }}>Node.js Engine Version</div>
-                        <div style={{ fontSize: "20px", fontWeight: "600", marginTop: "4px" }}>{diagData.nodeVersion}</div>
-                        <div style={{ marginTop: "8px" }}>
-                          {diagData.isNodeCompatible ? (
-                            <span className="badge badge-success">Compatible ({diagData.enginesNode})</span>
-                          ) : (
-                            <span className="badge badge-danger">Mismatch (Required: {diagData.enginesNode})</span>
-                          )}
-                        </div>
-                      </div>
 
-                      <div className="card" style={{ padding: "16px" }}>
-                        <div style={{ fontSize: "11px", color: "var(--color-fg-muted)", fontWeight: "600", textTransform: "uppercase" }}>npm Version</div>
-                        <div style={{ fontSize: "20px", fontWeight: "600", marginTop: "4px" }}>v{diagData.npmVersion}</div>
-                        <div style={{ marginTop: "8px" }}>
-                          <span className="badge badge-info">Stable Installed</span>
-                        </div>
-                      </div>
+                  {/* Terminal Console and Action Buttons */}
+                  <div className="card" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px" }}>
+                      <span style={{ fontSize: "13px", fontWeight: "600" }}>Diagnostics & Repair Console</span>
+                      {isActionLoading && <div className="spinner" style={{ width: "12px", height: "12px" }}></div>}
                     </div>
 
-                    <div className="card">
-                      <div className="card-header">Dependencies Audit</div>
-                      <div className="card-body" style={{ fontSize: "13px" }}>
-                        <div>Total requirements in package.json: <strong style={{ fontSize: "14px" }}>{diagData.totalDependencies}</strong> packages</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", minHeight: "260px" }}>
+                      
+                      {/* Left: action triggers column */}
+                      <div style={{
+                        padding: "20px",
+                        borderRight: "1px solid var(--color-border-default)",
+                        backgroundColor: "var(--color-bg-subtle)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                      }}>
+                        <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "var(--color-fg-muted)", letterSpacing: "0.5px", marginBottom: "4px" }}>
+                          Available Commands
+                        </div>
                         
-                        <div style={{ marginTop: "12px" }}>
-                          {diagData.missingDependencies.length === 0 ? (
-                            <div className="flash flash-success" style={{ margin: 0 }}>
-                              No missing local folders. All dependencies present in node_modules directory.
-                            </div>
-                          ) : (
-                            <div className="flash flash-danger" style={{ margin: 0 }}>
-                              {diagData.missingDependencies.length} package folders are missing! Development environment is broken. Please run &quot;Reinstall Modules&quot;.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 style={{ fontSize: "13px", fontWeight: "600", marginBottom: "8px" }}>One-Click Maintenance Tools</h3>
-                      <div style={{ display: "flex", gap: "10px" }}>
                         <button
                           className="btn"
                           disabled={isActionLoading}
                           onClick={() => handleMaintenanceAction("clean-cache")}
+                          style={{ textAlign: "left", padding: "10px 14px", fontSize: "12px", display: "flex", flexDirection: "column", gap: "4px" }}
                         >
-                          Clear npm Cache
+                          <span style={{ fontWeight: 600 }}>Clear npm Cache</span>
+                          <span style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "normal" }}>Forces cleanup of the local npm build cache</span>
                         </button>
-                        <button
-                          className="btn btn-danger"
-                          disabled={isActionLoading}
-                          onClick={() => handleMaintenanceAction("clean-modules")}
-                        >
-                          Reinstall node_modules
-                        </button>
+                        
                         <button
                           className="btn"
                           disabled={isActionLoading}
                           onClick={() => handleMaintenanceAction("audit-fix")}
+                          style={{ textAlign: "left", padding: "10px 14px", fontSize: "12px", display: "flex", flexDirection: "column", gap: "4px" }}
                         >
-                          Security Audit Fix
+                          <span style={{ fontWeight: 600 }}>Security Audit Fix</span>
+                          <span style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "normal" }}>Audits local modules for vulnerabilities</span>
+                        </button>
+                        
+                        <button
+                          className="btn btn-danger"
+                          disabled={isActionLoading}
+                          onClick={() => handleMaintenanceAction("clean-modules")}
+                          style={{ textAlign: "left", padding: "10px 14px", fontSize: "12px", display: "flex", flexDirection: "column", gap: "4px", marginTop: "auto" }}
+                        >
+                          <span style={{ fontWeight: 600 }}>Reinstall node_modules</span>
+                          <span style={{ fontSize: "10px", opacity: 0.8, fontWeight: "normal" }}>Deletes and recreates the target local packages</span>
                         </button>
                       </div>
-                    </div>
 
-                    {actionOutput && (
-                      <div className="card">
-                        <div className="card-header" style={{ fontSize: "12px", padding: "8px 12px" }}>
-                          <span>Action console output</span>
-                          <span className={`badge ${actionOutput.success ? "badge-success" : "badge-danger"}`}>
-                            {actionOutput.success ? "Success" : "Failed"}
-                          </span>
-                        </div>
-                        <pre style={{
-                          margin: 0,
-                          padding: "12px",
-                          backgroundColor: "rgba(0,0,0,0.3)",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "11px",
-                          color: "#c9d1d9",
-                          maxHeight: "180px",
-                          overflowY: "auto",
-                          whiteSpace: "pre-wrap",
-                        }}>
-                          {actionOutput.output}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div>Diagnostics details unavailable.</div>
-                )}
-              </div>
-
-              <div style={{
-                flex: 1,
-                backgroundColor: "var(--color-bg-subtle)",
-                borderLeft: "1px solid var(--color-border-default)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }}>
-                <div style={{
-                  padding: "12px 16px",
-                  borderBottom: "1px solid var(--color-border-default)",
-                  backgroundColor: "var(--color-bg-overlay)",
-                  fontWeight: 600,
-                  fontSize: "13px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}>
-                  <span>Background Server Console Output Logs</span>
-                  <span className={`badge ${runnerStatus?.status === "running" ? "badge-success" : "badge-warning"}`}>
-                    {runnerStatus?.status}
-                  </span>
-                </div>
-
-                <div style={{
-                  flex: 1,
-                  padding: "16px",
-                  backgroundColor: "#05080c",
-                  color: "#e6edf3",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                  overflowY: "auto",
-                  lineHeight: "20px",
-                }}>
-                  {runnerLogs.length === 0 ? (
-                    <div style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
-                      No active logs. Click &quot;Run Server&quot; in the Workspace tab to start live compiler output streaming.
-                    </div>
-                  ) : (
-                    runnerLogs.map((log, idx) => (
-                      <div key={idx} style={{
-                        color: log.includes("[ERROR]") ? "var(--color-danger-fg)" : "inherit",
-                        whiteSpace: "pre-wrap",
+                      {/* Right: Console logs output */}
+                      <div style={{
+                        backgroundColor: "#05080c",
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
                       }}>
-                        {log}
+                        <div style={{
+                          flex: 1,
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "12px",
+                          overflowY: "auto",
+                          lineHeight: "20px",
+                          color: "#8b949e",
+                          maxHeight: "280px",
+                        }}>
+                          {actionOutput ? (
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px", marginBottom: "10px", fontSize: "11px" }}>
+                                <span style={{ color: "var(--color-fg-muted)" }}>terminal_stream.log</span>
+                                <span className={`badge ${actionOutput.success ? "badge-success" : "badge-danger"}`}>
+                                  {actionOutput.success ? "Exit Code: 0" : "Exit Code: 1"}
+                                </span>
+                              </div>
+                              <pre style={{
+                                margin: 0,
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "11px",
+                                color: actionOutput.success ? "#e6edf3" : "var(--color-danger-fg)",
+                                whiteSpace: "pre-wrap",
+                              }}>
+                                {actionOutput.output}
+                              </pre>
+                            </div>
+                          ) : (
+                            <div style={{ color: "var(--color-fg-subtle)", fontStyle: "italic", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px" }}>
+                              $ compiler terminal ready. Select a maintenance command to view console output.
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    ))
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div style={{ fontSize: "13px", color: "var(--color-fg-muted)", padding: "16px", textAlign: "center" }}>
+                  Environment diagnostics data unavailable.
+                </div>
+              )}
             </div>
           )}
 

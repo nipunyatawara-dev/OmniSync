@@ -162,7 +162,7 @@ export default function ConflictResolver({ relativeFile, onResolved }: ConflictR
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       {/* Header bar */}
       <div style={{
-        padding: "12px 16px",
+        padding: "16px 24px",
         borderBottom: "1px solid var(--color-border-default)",
         backgroundColor: "var(--color-bg-subtle)",
         display: "flex",
@@ -171,16 +171,26 @@ export default function ConflictResolver({ relativeFile, onResolved }: ConflictR
         flexShrink: 0,
       }}>
         <div>
-          <h3 style={{ fontSize: "14px", fontWeight: 600 }}>Merge Conflict Editor: {relativeFile}</h3>
-          <span style={{ fontSize: "12px", color: "var(--color-fg-muted)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-fg-default)" }}>Merge Conflict Editor</span>
+            <span style={{ color: "var(--color-fg-muted)", fontSize: "12px" }}>/</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-accent-fg)", fontWeight: 600 }}>{relativeFile.split("/").pop()}</span>
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--color-fg-muted)", marginTop: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
             {conflictsLeft === 0 ? (
-              <span style={{ color: "var(--color-success-fg)" }}>All conflicts resolved</span>
+              <>
+                <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#3fb950" }}></span>
+                <span style={{ color: "#3fb950", fontWeight: 600 }}>All conflicts resolved</span>
+              </>
             ) : (
-              <span>{conflictsLeft} conflicts remaining</span>
+              <>
+                <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-danger-fg)" }}></span>
+                <span>{conflictsLeft} merge conflicts remaining</span>
+              </>
             )}
-          </span>
+          </div>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={handleSaveResolution}>
+        <button className="btn btn-primary btn-sm" onClick={handleSaveResolution} style={{ padding: "6px 14px" }}>
           Save Resolution
         </button>
       </div>
@@ -195,19 +205,30 @@ export default function ConflictResolver({ relativeFile, onResolved }: ConflictR
           flexDirection: "column",
           overflow: "hidden",
         }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--color-border-default)", backgroundColor: "var(--color-accent-bg)", color: "var(--color-accent-fg)", fontWeight: 600, fontSize: "12px" }}>
-            Current Change (Ours / Local)
+          <div style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid var(--color-border-default)",
+            backgroundColor: "rgba(56, 139, 253, 0.08)",
+            color: "var(--color-accent-fg)",
+            fontWeight: 600,
+            fontSize: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}>
+            <span style={{ fontSize: "12px" }}>←</span>
+            <span>Current Change (Ours / Local)</span>
           </div>
-          <div style={{ flex: 1, overflow: "auto", padding: "12px", backgroundColor: "rgba(56, 139, 253, 0.02)" }}>
+          <div style={{ flex: 1, overflow: "auto", padding: "16px", backgroundColor: "rgba(56, 139, 253, 0.01)" }}>
             {conflictBlocks.map((block) => (
-              <div key={block.id} style={{ marginBottom: "16px", border: "1px solid var(--color-border-default)", borderRadius: "6px", overflow: "hidden" }}>
-                <div style={{ padding: "4px 8px", backgroundColor: "var(--color-bg-subtle)", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Block {block.id}</span>
+              <div key={block.id} style={{ marginBottom: "16px", border: "1px solid var(--color-border-default)", borderRadius: "6px", overflow: "hidden", background: "rgba(22, 27, 34, 0.4)" }}>
+                <div style={{ padding: "6px 10px", backgroundColor: "var(--color-bg-subtle)", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border-default)" }}>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)" }}>Block {block.id}</span>
                   <button className="btn btn-sm" style={{ padding: "2px 8px", fontSize: "10px" }} onClick={() => handleResolveBlock(block.id, "ours")}>
                     Accept Ours
                   </button>
                 </div>
-                <pre style={{ margin: 0, padding: "8px", fontFamily: "var(--font-mono)", fontSize: "11px", whiteSpace: "pre-wrap", overflowX: "auto" }}>
+                <pre style={{ margin: 0, padding: "12px", fontFamily: "var(--font-mono)", fontSize: "11px", whiteSpace: "pre-wrap", overflowX: "auto", color: "#e6edf3", lineHeight: "16px" }}>
                   {block.ours || <span style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>[Empty block]</span>}
                 </pre>
               </div>
@@ -217,26 +238,37 @@ export default function ConflictResolver({ relativeFile, onResolved }: ConflictR
 
         {/* Pane 2: Resulting Code (Editable) */}
         <div style={{
-          flex: 1.5,
+          flex: 1.4,
           borderRight: "1px solid var(--color-border-default)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
         }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--color-border-default)", backgroundColor: "var(--color-bg-overlay)", fontWeight: 600, fontSize: "12px" }}>
-            Resulting Code (Live Editable Output)
+          <div style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid var(--color-border-default)",
+            backgroundColor: "var(--color-bg-subtle)",
+            fontWeight: 600,
+            fontSize: "12px",
+            color: "var(--color-fg-default)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}>
+            <span>✏️</span>
+            <span>Resulting Output (Live Editable)</span>
           </div>
           <textarea
             value={manualOutput}
             onChange={(e) => setManualOutput(e.target.value)}
             style={{
               flex: 1,
-              padding: "16px",
+              padding: "20px",
               fontFamily: "var(--font-mono)",
               fontSize: "12px",
-              lineHeight: "20px",
-              backgroundColor: "var(--color-bg-default)",
-              color: "var(--color-fg-default)",
+              lineHeight: "22px",
+              backgroundColor: "#05080c",
+              color: "#e6edf3",
               border: "none",
               resize: "none",
               outline: "none",
@@ -251,19 +283,30 @@ export default function ConflictResolver({ relativeFile, onResolved }: ConflictR
           flexDirection: "column",
           overflow: "hidden",
         }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--color-border-default)", backgroundColor: "var(--color-success-bg)", color: "var(--color-success-fg)", fontWeight: 600, fontSize: "12px" }}>
-            Incoming Change (Theirs / Remote)
+          <div style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid var(--color-border-default)",
+            backgroundColor: "rgba(46, 160, 67, 0.08)",
+            color: "#3fb950",
+            fontWeight: 600,
+            fontSize: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}>
+            <span>→</span>
+            <span>Incoming Change (Theirs / Remote)</span>
           </div>
-          <div style={{ flex: 1, overflow: "auto", padding: "12px", backgroundColor: "rgba(46, 160, 67, 0.02)" }}>
+          <div style={{ flex: 1, overflow: "auto", padding: "16px", backgroundColor: "rgba(46, 160, 67, 0.01)" }}>
             {conflictBlocks.map((block) => (
-              <div key={block.id} style={{ marginBottom: "16px", border: "1px solid var(--color-border-default)", borderRadius: "6px", overflow: "hidden" }}>
-                <div style={{ padding: "4px 8px", backgroundColor: "var(--color-bg-subtle)", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Block {block.id}</span>
+              <div key={block.id} style={{ marginBottom: "16px", border: "1px solid var(--color-border-default)", borderRadius: "6px", overflow: "hidden", background: "rgba(22, 27, 34, 0.4)" }}>
+                <div style={{ padding: "6px 10px", backgroundColor: "var(--color-bg-subtle)", fontSize: "11px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border-default)" }}>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)" }}>Block {block.id}</span>
                   <button className="btn btn-sm" style={{ padding: "2px 8px", fontSize: "10px" }} onClick={() => handleResolveBlock(block.id, "theirs")}>
                     Accept Theirs
                   </button>
                 </div>
-                <pre style={{ margin: 0, padding: "8px", fontFamily: "var(--font-mono)", fontSize: "11px", whiteSpace: "pre-wrap", overflowX: "auto" }}>
+                <pre style={{ margin: 0, padding: "12px", fontFamily: "var(--font-mono)", fontSize: "11px", whiteSpace: "pre-wrap", overflowX: "auto", color: "#e6edf3", lineHeight: "16px" }}>
                   {block.theirs || <span style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>[Empty block]</span>}
                 </pre>
               </div>
