@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local/agent files
+/AGENTS.md
+/CLAUDE.md
+
+# local user data and IDE settings
+/User data/
+/.vscode/
+/.idea/
+
+
