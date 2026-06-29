@@ -1,0 +1,421 @@
+/* OmniSync Global Styles - GitHub Design System Theme */
+
+:root {
+  /* Dark Mode (Default) Color Tokens */
+  --color-bg-default: #0d1117;
+  --color-bg-subtle: #161b22;
+  --color-bg-overlay: #161b22;
+  --color-bg-active: #21262d;
+  
+  --color-border-default: #30363d;
+  --color-border-muted: #21262d;
+  --color-border-active: #8b949e;
+  
+  --color-fg-default: #c9d1d9;
+  --color-fg-muted: #8b949e;
+  --color-fg-subtle: #484f58;
+  
+  --color-accent-fg: #58a6ff;
+  --color-accent-bg: rgba(56, 139, 253, 0.1);
+  --color-accent-border: rgba(56, 139, 253, 0.4);
+  
+  --color-success-fg: #3fb950;
+  --color-success-bg: rgba(46, 160, 67, 0.15);
+  --color-success-border: rgba(46, 160, 67, 0.4);
+  
+  --color-danger-fg: #f85149;
+  --color-danger-bg: rgba(248, 81, 73, 0.1);
+  --color-danger-border: rgba(248, 81, 73, 0.4);
+  
+  --color-attention-fg: #d29922;
+  --color-attention-bg: rgba(187, 128, 9, 0.1);
+  --color-attention-border: rgba(187, 128, 9, 0.4);
+  
+  --color-btn-bg: #21262d;
+  --color-btn-text: #c9d1d9;
+  --color-btn-border: #30363d;
+  --color-btn-hover-bg: #30363d;
+  --color-btn-hover-border: #8b949e;
+  
+  --color-btn-primary-bg: #238636;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-primary-border: #2ea44f;
+  --color-btn-primary-hover-bg: #2ea44f;
+  
+  --color-header-bg: #161b22;
+  --color-header-text: #f0f6fc;
+  
+  --color-diff-added-bg: rgba(46, 160, 67, 0.15);
+  --color-diff-added-line: #2ea44f;
+  --color-diff-removed-bg: rgba(248, 81, 73, 0.15);
+  --color-diff-removed-line: #da3633;
+  --color-diff-neutral-bg: transparent;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+}
+
+[data-theme="light"] {
+  /* Light Mode Color Tokens */
+  --color-bg-default: #ffffff;
+  --color-bg-subtle: #f6f8fa;
+  --color-bg-overlay: #ffffff;
+  --color-bg-active: #eaeef2;
+  
+  --color-border-default: #d0d7de;
+  --color-border-muted: #d8dee4;
+  --color-border-active: #57606a;
+  
+  --color-fg-default: #24292f;
+  --color-fg-muted: #57606a;
+  --color-fg-subtle: #6e7781;
+  
+  --color-accent-fg: #0969da;
+  --color-accent-bg: rgba(9, 105, 218, 0.1);
+  --color-accent-border: rgba(9, 105, 218, 0.4);
+  
+  --color-success-fg: #1a7f37;
+  --color-success-bg: rgba(26, 127, 55, 0.15);
+  --color-success-border: rgba(26, 127, 55, 0.4);
+  
+  --color-danger-fg: #cf222e;
+  --color-danger-bg: rgba(207, 34, 46, 0.1);
+  --color-danger-border: rgba(207, 34, 46, 0.4);
+  
+  --color-attention-fg: #9a6700;
+  --color-attention-bg: rgba(154, 103, 0, 0.1);
+  --color-attention-border: rgba(154, 103, 0, 0.4);
+  
+  --color-btn-bg: #f6f8fa;
+  --color-btn-text: #24292f;
+  --color-btn-border: rgba(27, 31, 36, 0.15);
+  --color-btn-hover-bg: #f3f4f6;
+  --color-btn-hover-border: rgba(27, 31, 36, 0.15);
+  
+  --color-btn-primary-bg: #2da44f;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-primary-border: rgba(27, 31, 36, 0.15);
+  --color-btn-primary-hover-bg: #2c974b;
+  
+  --color-header-bg: #24292f;
+  --color-header-text: #ffffff;
+  
+  --color-diff-added-bg: #e6ffec;
+  --color-diff-added-line: #2da44f;
+  --color-diff-removed-bg: #ffebe9;
+  --color-diff-removed-line: #cf222e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-default);
+  color: var(--color-fg-default);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-default);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fg-muted);
+}
+
+/* Custom CSS layout classes */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-default);
+}
+
+.header {
+  background-color: var(--color-header-bg);
+  color: var(--color-header-text);
+  border-bottom: 1px solid var(--color-border-default);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 48px);
+}
+
+.sidebar {
+  width: 64px;
+  background-color: var(--color-bg-subtle);
+  border-right: 1px solid var(--color-border-default);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sidebar-btn:hover {
+  color: var(--color-fg-default);
+  background-color: var(--color-bg-active);
+}
+
+.sidebar-btn.active {
+  color: var(--color-accent-fg);
+  background-color: var(--color-accent-bg);
+  border: 1px solid var(--color-accent-border);
+}
+
+.content-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-bg-default);
+}
+
+/* GitHub components styling */
+.btn {
+  background-color: var(--color-btn-bg);
+  color: var(--color-btn-text);
+  border: 1px solid var(--color-btn-border);
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 20px;
+  transition: background-color 0.1s, border-color 0.1s;
+  user-select: none;
+}
+
+.btn:hover {
+  background-color: var(--color-btn-hover-bg);
+  border-color: var(--color-btn-hover-border);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+  border: 1px solid var(--color-btn-primary-border);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-btn-primary-hover-bg);
+  border-color: var(--color-btn-primary-border);
+}
+
+.btn-sm {
+  padding: 3px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn-danger {
+  color: var(--color-danger-fg);
+  border-color: var(--color-border-default);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+}
+
+.form-control {
+  background-color: var(--color-bg-default);
+  color: var(--color-fg-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  padding: 5px 12px;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+  line-height: 20px;
+}
+
+.form-control:focus {
+  border-color: var(--color-accent-fg);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
+}
+
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-note {
+  font-size: 12px;
+  color: var(--color-fg-muted);
+  margin-top: 4px;
+}
+
+/* Card components */
+.card {
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 16px;
+  background-color: var(--color-bg-overlay);
+  border-bottom: 1px solid var(--color-border-default);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.flash {
+  padding: 16px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.flash-success {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-fg-default);
+}
+
+.flash-danger {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-fg-default);
+}
+
+.flash-attention {
+  background-color: var(--color-attention-bg);
+  border-color: var(--color-attention-border);
+  color: var(--color-fg-default);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  border-radius: 2em;
+  background-color: var(--color-bg-active);
+  color: var(--color-fg-default);
+  border: 1px solid var(--color-border-default);
+}
+
+.badge-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-fg);
+  border-color: var(--color-success-border);
+}
+
+.badge-danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-fg);
+  border-color: var(--color-danger-border);
+}
+
+.badge-warning {
+  background-color: var(--color-attention-bg);
+  color: var(--color-attention-fg);
+  border-color: var(--color-attention-border);
+}
+
+.badge-info {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-border);
+}
+
+/* Spinner helper */
+.spinner {
+  border: 2px solid var(--color-border-default);
+  border-top: 2px solid var(--color-accent-fg);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
