@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter as useAppRouter } from "next/navigation";
 import FileTree, { FileNode } from "@/components/FileTree";
 import CodeViewer from "@/components/CodeViewer";
@@ -90,6 +90,111 @@ export default function DashboardPage() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [isYearlyCalendarExpanded, setIsYearlyCalendarExpanded] = useState(true);
+
+  // Helper for contribution calendar dates formatting
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Generate contribution calendar days for the current calendarYear (Jan 1 to Dec 31)
+  const contributionDays = useMemo(() => {
+    const days = [];
+    const jan1 = new Date(calendarYear, 0, 1);
+    const startDayOfWeek = jan1.getDay();
+    const start = new Date(jan1);
+    start.setDate(jan1.getDate() - startDayOfWeek); // Sunday of Jan 1st week
+
+    const dec31 = new Date(calendarYear, 11, 31);
+    const endDayOfWeek = dec31.getDay();
+    const end = new Date(dec31);
+    end.setDate(dec31.getDate() + (6 - endDayOfWeek)); // Saturday of Dec 31st week
+
+    const curr = new Date(start);
+    while (curr <= end) {
+      days.push(new Date(curr));
+      curr.setDate(curr.getDate() + 1);
+    }
+    return days;
+  }, [calendarYear]);
+
+  // Map dates to commit counts
+  const commitCountsByDate = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allCommits.forEach((commit) => {
+      if (commit.date) {
+        counts[commit.date] = (counts[commit.date] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allCommits]);
+
+  // Calculate total commits in the calendar year (excluding boundary dates from other years)
+  const totalCommitsLastYear = useMemo(() => {
+    let total = 0;
+    contributionDays.forEach((date) => {
+      if (date.getFullYear() === calendarYear) {
+        const dateString = formatLocalDate(date);
+        total += commitCountsByDate[dateString] || 0;
+      }
+    });
+    return total;
+  }, [contributionDays, commitCountsByDate, calendarYear]);
+
+  // Determine starting column for each month label
+  const monthLabels = useMemo(() => {
+    const labels: { text: string; colIdx: number }[] = [];
+    let prevMonth = -1;
+    const numCols = Math.ceil(contributionDays.length / 7);
+    for (let colIdx = 0; colIdx < numCols; colIdx++) {
+      const dayIndex = colIdx * 7;
+      if (dayIndex < contributionDays.length) {
+        const date = contributionDays[dayIndex];
+        // Treat boundary days of previous/next years as current year Jan/Dec respectively
+        const month = date.getFullYear() < calendarYear ? 0 : date.getFullYear() > calendarYear ? 11 : date.getMonth();
+        if (month !== prevMonth) {
+          labels.push({
+            text: MONTH_NAMES[month].slice(0, 3),
+            colIdx: colIdx,
+          });
+          prevMonth = month;
+        }
+      }
+    }
+    return labels;
+  }, [contributionDays, calendarYear]);
+
+  // Find the year of the oldest commit in the repository
+  const repoStartYear = useMemo(() => {
+    if (allCommits.length === 0) return new Date().getFullYear();
+    const oldest = allCommits[allCommits.length - 1];
+    if (oldest && oldest.date) {
+      const d = new Date(oldest.date);
+      if (!isNaN(d.getTime())) {
+        return d.getFullYear();
+      }
+    }
+    return new Date().getFullYear();
+  }, [allCommits]);
+
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+
+  const handleSquareClick = (dateString: string, date: Date) => {
+    setSelectedCalendarDate(dateString);
+    setCalendarYear(date.getFullYear());
+    setCalendarMonth(date.getMonth());
+  };
+
+  const getContributionColor = (count: number) => {
+    if (count === 0) return "var(--color-bg-active)";
+    if (count <= 2) return "#0e4429";
+    if (count <= 5) return "#006d32";
+    if (count <= 9) return "#26a641";
+    return "#39d353";
+  };
 
   // Layout Resizing state
   const [leftWidth, setLeftWidth] = useState(240);
@@ -1531,7 +1636,187 @@ export default function DashboardPage() {
                   <span style={{ fontSize: "13px", color: "var(--color-fg-muted)" }}>Reading repository Git history records...</span>
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1.2fr", gap: "24px", alignItems: "start" }}>
+                <>
+                  {/* Yearly Contribution Calendar */}
+                  <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", flexShrink: 0 }}>
+                    <style dangerouslySetInnerHTML={{__html: `
+                      .contribution-square:hover {
+                        transform: scale(1.2);
+                        filter: brightness(1.2);
+                      }
+                    `}} />
+                    
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--color-fg-default)" }}>
+                          Yearly Commit Activity
+                        </div>
+                        
+                        {/* Year switcher buttons */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "var(--color-bg-active)", padding: "2px", borderRadius: "6px", border: "1px solid var(--color-border-default)" }}>
+                          <button
+                            className="btn btn-sm"
+                            disabled={calendarYear <= repoStartYear}
+                            onClick={() => {
+                              if (calendarYear > repoStartYear) {
+                                setCalendarYear((y) => y - 1);
+                              }
+                            }}
+                            style={{
+                              padding: "2px 6px",
+                              fontSize: "10px",
+                              height: "20px",
+                              display: "flex",
+                              alignItems: "center",
+                              opacity: calendarYear <= repoStartYear ? 0.4 : 1,
+                              cursor: calendarYear <= repoStartYear ? "not-allowed" : "pointer"
+                            }}
+                            title={`Previous Year${calendarYear <= repoStartYear ? ' (Limit reached)' : ''}`}
+                          >
+                            &lt;
+                          </button>
+                          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--color-fg-default)", minWidth: "36px", textAlign: "center" }}>
+                            {calendarYear}
+                          </span>
+                          <button
+                            className="btn btn-sm"
+                            disabled={calendarYear >= currentYear}
+                            onClick={() => {
+                              if (calendarYear < currentYear) {
+                                setCalendarYear((y) => y + 1);
+                              }
+                            }}
+                            style={{
+                              padding: "2px 6px",
+                              fontSize: "10px",
+                              height: "20px",
+                              display: "flex",
+                              alignItems: "center",
+                              opacity: calendarYear >= currentYear ? 0.4 : 1,
+                              cursor: calendarYear >= currentYear ? "not-allowed" : "pointer"
+                            }}
+                            title={`Next Year${calendarYear >= currentYear ? ' (Limit reached)' : ''}`}
+                          >
+                            &gt;
+                          </button>
+                        </div>
+
+                        <span style={{ fontSize: "12px", color: "var(--color-fg-muted)" }}>
+                          ({totalCommitsLastYear} commits)
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => setIsYearlyCalendarExpanded(!isYearlyCalendarExpanded)}
+                        style={{ fontSize: "11px", padding: "4px 10px" }}
+                      >
+                        {isYearlyCalendarExpanded ? "Hide Calendar ▴" : "Show Calendar ▾"}
+                      </button>
+                    </div>
+
+                    {isYearlyCalendarExpanded && (
+                      <>
+                        <div style={{ overflowX: "auto", paddingBottom: "4px", width: "100%" }}>
+                          <div style={{
+                            minWidth: "max-content",
+                            display: "grid",
+                            gridTemplateColumns: `24px repeat(${Math.ceil(contributionDays.length / 7)}, 10px)`,
+                            gridTemplateRows: "15px repeat(7, 10px)",
+                            gap: "2px",
+                            fontSize: "9px",
+                            color: "var(--color-fg-muted)"
+                          }}>
+                            {/* Month labels */}
+                            {monthLabels.map((lbl, idx) => (
+                              <span
+                                key={`month-${idx}`}
+                                style={{
+                                  gridColumnStart: lbl.colIdx + 2,
+                                  gridColumnEnd: "span 4",
+                                  gridRowStart: 1,
+                                  whiteSpace: "nowrap",
+                                  alignSelf: "end",
+                                  paddingBottom: "2px"
+                                }}
+                              >
+                                {lbl.text}
+                              </span>
+                            ))}
+
+                            {/* Day labels */}
+                            <div style={{ gridColumnStart: 1, gridRowStart: 3, textAlign: "right", lineHeight: "10px", paddingRight: "6px" }}>Mon</div>
+                            <div style={{ gridColumnStart: 1, gridRowStart: 5, textAlign: "right", lineHeight: "10px", paddingRight: "6px" }}>Wed</div>
+                            <div style={{ gridColumnStart: 1, gridRowStart: 7, textAlign: "right", lineHeight: "10px", paddingRight: "6px" }}>Fri</div>
+
+                            {/* Dots */}
+                            {contributionDays.map((date, idx) => {
+                              const colIdx = Math.floor(idx / 7);
+                              const dayOfWeek = date.getDay();
+                              const dateString = formatLocalDate(date);
+                              const isSameYear = date.getFullYear() === calendarYear;
+                              const count = isSameYear ? (commitCountsByDate[dateString] || 0) : 0;
+                              const isSelected = selectedCalendarDate === dateString;
+                              const color = getContributionColor(count);
+                              
+                              if (!isSameYear) {
+                                return (
+                                  <div
+                                    key={`dot-${idx}`}
+                                    style={{
+                                      gridColumnStart: colIdx + 2,
+                                      gridRowStart: dayOfWeek + 2,
+                                      width: "10px",
+                                      height: "10px",
+                                      backgroundColor: "transparent",
+                                      pointerEvents: "none"
+                                    }}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <div
+                                  key={`dot-${idx}`}
+                                  onClick={() => handleSquareClick(dateString, date)}
+                                  title={`${count} commit${count === 1 ? "" : "s"} on ${date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`}
+                                  style={{
+                                    gridColumnStart: colIdx + 2,
+                                    gridRowStart: dayOfWeek + 2,
+                                    width: "10px",
+                                    height: "10px",
+                                    borderRadius: "2px",
+                                    backgroundColor: color,
+                                    cursor: "pointer",
+                                    transition: "transform 0.1s ease, box-shadow 0.1s ease",
+                                    boxShadow: isSelected ? "0 0 0 1.5px var(--color-accent-fg)" : "none",
+                                    zIndex: isSelected ? 2 : 1,
+                                  }}
+                                  className="contribution-square"
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px", borderTop: "1px solid var(--color-border-default)", paddingTop: "12px" }}>
+                          <div style={{ fontSize: "11px", color: "var(--color-fg-muted)" }}>
+                            Click any cell to load the timeline details for that date.
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--color-fg-muted)" }}>
+                            <span>Less</span>
+                            <div style={{ width: "10px", height: "10px", borderRadius: "1.5px", backgroundColor: getContributionColor(0) }} />
+                            <div style={{ width: "10px", height: "10px", borderRadius: "1.5px", backgroundColor: getContributionColor(1) }} />
+                            <div style={{ width: "10px", height: "10px", borderRadius: "1.5px", backgroundColor: getContributionColor(3) }} />
+                            <div style={{ width: "10px", height: "10px", borderRadius: "1.5px", backgroundColor: getContributionColor(6) }} />
+                            <div style={{ width: "10px", height: "10px", borderRadius: "1.5px", backgroundColor: getContributionColor(10) }} />
+                            <span>More</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1.2fr", gap: "24px", alignItems: "start", flexShrink: 0 }}>
                   
                   {/* Left Column: Sleek Calendar Grid */}
                   <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -1578,18 +1863,6 @@ export default function DashboardPage() {
                         <button
                           className="btn btn-sm"
                           onClick={() => {
-                            const today = new Date();
-                            setCalendarYear(today.getFullYear());
-                            setCalendarMonth(today.getMonth());
-                          }}
-                          style={{ fontSize: "11px", padding: "4px 10px" }}
-                        >
-                          Today
-                        </button>
-                        
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => {
                             if (allCommits.length === 0) return;
                             const oldest = allCommits[allCommits.length - 1];
                             if (oldest && oldest.date) {
@@ -1603,6 +1876,18 @@ export default function DashboardPage() {
                           title="Jump to the first commit of the repository"
                         >
                           Repo Start ⇤
+                        </button>
+
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            const today = new Date();
+                            setCalendarYear(today.getFullYear());
+                            setCalendarMonth(today.getMonth());
+                          }}
+                          style={{ fontSize: "11px", padding: "4px 10px" }}
+                        >
+                          Today
                         </button>
                       </div>
                     </div>
@@ -1781,6 +2066,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
+                </>
               )}
             </div>
           )}
