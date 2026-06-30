@@ -1,5 +1,5 @@
 /* eslint-disable */
-const { app, BrowserWindow, shell, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, dialog, nativeImage } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
@@ -51,6 +51,7 @@ function createWindow() {
     height: 850,
     minWidth: 1000,
     minHeight: 700,
+    icon: path.join(__dirname, "public", "icon.png"),
     titleBarStyle: "hiddenInset", // Sleek macOS style
     backgroundColor: "#0d1117",
     show: false, // Don't show until ready-to-show
@@ -60,6 +61,16 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  // Set Dock icon on macOS
+  if (process.platform === "darwin") {
+    try {
+      const image = nativeImage.createFromPath(path.join(__dirname, "public", "icon.png"));
+      app.dock.setIcon(image);
+    } catch (err) {
+      console.error("Failed to set macOS dock icon:", err);
+    }
+  }
 
   // Register Directory Picker IPC handler
   ipcMain.handle("select-directory", async () => {

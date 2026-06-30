@@ -697,9 +697,7 @@ export default function DashboardPage() {
       {/* Top Banner Header */}
       <header className="header">
         <div className="header-brand">
-          <svg height="20" viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.73-2.79" />
-          </svg>
+          <img src="/icon.png" alt="Logo" style={{ height: "20px", width: "20px", objectFit: "contain", borderRadius: "4px" }} />
           <span style={{ fontSize: "14px", fontWeight: "600" }}>{activeProfile?.name || "OmniSync Workspace"}</span>
           <span className={`badge ${activeProfile?.gitToken ? "badge-success" : "badge-info"}`} style={{ fontSize: "10px", marginLeft: "4px" }}>
             {activeProfile?.gitToken ? "GitHub Connected" : "Local Only"}

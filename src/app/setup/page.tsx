@@ -647,9 +647,7 @@ export default function SetupPage() {
       {step === "login" && (
         <div className="w-full md:w-[400px] p-xl bg-surface-container flex flex-col border-b md:border-b-0 md:border-r border-outline-variant shrink-0 animate-fade-in">
           <div className="flex items-center gap-sm mb-lg">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.73-2.79" />
-            </svg>
+            <img src="/icon.png" alt="Logo" style={{ height: "24px", width: "24px", objectFit: "contain", borderRadius: "4px" }} />
             <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface">OmniSync</span>
           </div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface mb-md">The Local Deck for GitHub</h1>
