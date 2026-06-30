@@ -25,6 +25,7 @@ export interface UserProfile {
 const USER_DATA_DIR = path.join(process.cwd(), "User data");
 const PROFILES_FILE = path.join(USER_DATA_DIR, "profiles.json");
 const CONFIG_FILE = path.join(USER_DATA_DIR, "config.json"); // To store active profile
+const OAUTH_FILE = path.join(USER_DATA_DIR, "oauth.json"); // To store OAuth config credentials
 
 // Ensure directory exists
 async function ensureDirs() {
@@ -137,3 +138,31 @@ export async function deleteProfile(id: string): Promise<void> {
     await setActiveProfileId(filtered[0]?.id || null);
   }
 }
+
+export interface OauthConfig {
+  githubClientId?: string;
+  githubClientSecret?: string;
+}
+
+export async function getOauthConfig(): Promise<OauthConfig> {
+  try {
+    await ensureDirs();
+    const data = await fs.readFile(OAUTH_FILE, "utf-8");
+    const json = JSON.parse(data);
+    return {
+      githubClientId: process.env.GITHUB_CLIENT_ID || json.githubClientId || undefined,
+      githubClientSecret: process.env.GITHUB_CLIENT_SECRET || json.githubClientSecret || undefined,
+    };
+  } catch (error: unknown) {
+    return {
+      githubClientId: process.env.GITHUB_CLIENT_ID || undefined,
+      githubClientSecret: process.env.GITHUB_CLIENT_SECRET || undefined,
+    };
+  }
+}
+
+export async function saveOauthConfig(config: OauthConfig): Promise<void> {
+  await ensureDirs();
+  await fs.writeFile(OAUTH_FILE, JSON.stringify(config, null, 2), "utf-8");
+}
+
