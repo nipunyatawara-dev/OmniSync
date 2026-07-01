@@ -1,12 +1,57 @@
 /* eslint-disable */
-const { app, BrowserWindow, shell, ipcMain, dialog, nativeImage, session } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, dialog, nativeImage, session, safeStorage } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 
 // Generate a cryptographically secure random token on startup
 const apiToken = crypto.randomBytes(32).toString("hex");
+
+// Load or create a strong, per-install encryption secret used by the Next.js
+// server to encrypt profile credentials at rest. The secret is a random 256-bit
+// value persisted to disk, protected by the OS keychain via safeStorage when
+// available (falling back to a plaintext file only if encryption is unavailable).
+function getOrCreateEncryptionSecret() {
+  const userDataDir = path.join(process.cwd(), "User data");
+  const secretFile = path.join(userDataDir, "secret.bin");
+  const ENC_PREFIX = "v1:enc:";
+  const PLAIN_PREFIX = "v1:plain:";
+
+  try {
+    fs.mkdirSync(userDataDir, { recursive: true });
+  } catch {}
+
+  try {
+    if (fs.existsSync(secretFile)) {
+      const stored = fs.readFileSync(secretFile, "utf-8").trim();
+      if (stored.startsWith(ENC_PREFIX) && safeStorage.isEncryptionAvailable()) {
+        const encrypted = Buffer.from(stored.slice(ENC_PREFIX.length), "base64");
+        return safeStorage.decryptString(encrypted);
+      }
+      if (stored.startsWith(PLAIN_PREFIX)) {
+        return stored.slice(PLAIN_PREFIX.length);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to read encryption secret, regenerating:", err);
+  }
+
+  const secret = crypto.randomBytes(32).toString("hex");
+  try {
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(secret).toString("base64");
+      fs.writeFileSync(secretFile, ENC_PREFIX + encrypted, { encoding: "utf-8", mode: 0o600 });
+    } else {
+      console.warn("OS keychain unavailable; storing encryption secret without keychain protection.");
+      fs.writeFileSync(secretFile, PLAIN_PREFIX + secret, { encoding: "utf-8", mode: 0o600 });
+    }
+  } catch (err) {
+    console.error("Failed to persist encryption secret:", err);
+  }
+  return secret;
+}
 
 let nextProcess = null;
 let mainWindow = null;
@@ -33,11 +78,18 @@ function startNextServer() {
   console.log(`Starting Next.js server in ${isDev ? "development" : "production"} mode...`);
 
   // Spawn Next.js server process with the generated API token in the environment
+  const encryptionSecret = getOrCreateEncryptionSecret();
+
   const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
   nextProcess = spawn(npxCmd, ["next", command], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: PORT.toString(), OMNISYNC_API_TOKEN: apiToken },
-    shell: true,
+    env: {
+      ...process.env,
+      PORT: PORT.toString(),
+      OMNISYNC_API_TOKEN: apiToken,
+      OMNISYNC_ENCRYPTION_SECRET: encryptionSecret,
+    },
+    shell: process.platform === "win32",
   });
 
   nextProcess.stdout.on("data", (data) => {
@@ -50,22 +102,8 @@ function startNextServer() {
 }
 
 function createWindow() {
-  const isDev = !app.isPackaged;
-  const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
-    : "script-src 'self' 'unsafe-inline';";
-
-  // Configure Content-Security-Policy (CSP) headers for the Electron window
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        "Content-Security-Policy": [
-          `default-src 'self'; ${scriptSrc} style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://avatars.githubusercontent.com https://github.com; connect-src 'self' https://api.github.com https://github.com http://localhost:* ws://localhost:*;`
-        ]
-      }
-    });
-  });
+  // The Content-Security-Policy is applied by the Next.js middleware (nonce-based
+  // in production) so that inline scripts can be locked down with a per-request nonce.
 
   // Provision HttpOnly session cookie containing the API token for Same-Origin API requests
   const cookie = {

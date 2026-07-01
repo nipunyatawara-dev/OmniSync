@@ -11,8 +11,8 @@ export async function GET() {
       clientId,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[auth/config] GET failed:", error);
+    return NextResponse.json({ error: "Failed to load configuration" }, { status: 500 });
   }
 }
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[auth/config] POST failed:", error);
+    return NextResponse.json({ error: "Failed to save configuration" }, { status: 500 });
   }
 }

@@ -17,13 +17,19 @@ export interface DiffLine {
 // Helper to run commands asynchronously with parameter arrays
 function runGit(args: string[], cwd: string): Promise<string> {
   return new Promise((resolve) => {
-    execFile("git", args, { cwd, encoding: "utf-8" }, (error, stdout) => {
-      if (error) {
-        resolve("");
-      } else {
-        resolve(stdout.trim());
+    execFile(
+      "git",
+      args,
+      { cwd, encoding: "utf-8", timeout: 20000, maxBuffer: 32 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          console.error(`[git] command failed: git ${args[0]}`, error.message);
+          resolve("");
+        } else {
+          resolve(stdout.trim());
+        }
       }
-    });
+    );
   });
 }
 

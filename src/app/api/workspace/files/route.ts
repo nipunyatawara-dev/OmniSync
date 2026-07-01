@@ -83,7 +83,7 @@ export async function GET() {
     const tree = await buildFileTree(rootPath, rootPath, 0, 15, new Set<string>());
     return NextResponse.json({ tree, rootPath });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[files] failed to build tree:", err);
+    return NextResponse.json({ error: "Failed to read workspace files" }, { status: 500 });
   }
 }

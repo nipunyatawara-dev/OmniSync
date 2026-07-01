@@ -11,8 +11,9 @@ export interface UserProfile {
   phone?: string;
   businessName?: string;
   profilePic?: string;
-  gitToken?: string; // Storing GitHub PAT
-  password?: string; // Local access password
+  gitToken?: string; // Storing GitHub PAT (server-side only; never sent to the client)
+  hasGitToken?: boolean; // Client-facing flag indicating a token is stored
+  password?: string; // Local access password (stored as a one-way hash)
   workspacePath?: string; // Selected local repo workspace directory path
   workspaceType?: "automatic" | "manual";
   branchProtection?: boolean;
@@ -57,6 +58,29 @@ export function encrypt(text: string): string {
   encrypted += cipher.final("hex");
   const authTag = cipher.getAuthTag().toString("hex");
   return iv.toString("hex") + ":" + authTag + ":" + encrypted;
+}
+
+const PASSWORD_PREFIX = "scrypt$";
+
+// One-way password hashing. Local access passwords must never be reversible.
+export function hashPassword(plain: string): string {
+  const salt = crypto.randomBytes(16);
+  const derived = crypto.scryptSync(plain, salt, 64);
+  return `${PASSWORD_PREFIX}${salt.toString("hex")}$${derived.toString("hex")}`;
+}
+
+export function isHashedPassword(value: string): boolean {
+  return value.startsWith(PASSWORD_PREFIX);
+}
+
+export function verifyPassword(plain: string, stored: string): boolean {
+  if (!isHashedPassword(stored)) return false;
+  const [, saltHex, hashHex] = stored.split("$");
+  if (!saltHex || !hashHex) return false;
+  const salt = Buffer.from(saltHex, "hex");
+  const expected = Buffer.from(hashHex, "hex");
+  const derived = crypto.scryptSync(plain, salt, expected.length);
+  return expected.length === derived.length && crypto.timingSafeEqual(expected, derived);
 }
 
 export function decrypt(text: string): string {
@@ -108,14 +132,15 @@ export async function getProfiles(): Promise<UserProfile[]> {
         return {
           ...p,
           gitToken: p.gitToken ? decrypt(p.gitToken) : undefined,
-          password: p.password ? decrypt(p.password) : undefined,
+          // Password is stored as a one-way hash; pass it through untouched.
+          password: p.password,
         };
       } catch (err) {
         console.error(`Failed to decrypt credentials for profile: ${p.id}`, err);
         return {
           ...p,
           gitToken: undefined,
-          password: undefined,
+          password: p.password,
         };
       }
     });
@@ -135,7 +160,9 @@ export async function saveProfiles(profiles: UserProfile[]): Promise<void> {
   const encryptedProfiles = profiles.map((p) => ({
     ...p,
     gitToken: p.gitToken ? encrypt(p.gitToken) : undefined,
-    password: p.password ? encrypt(p.password) : undefined,
+    password: p.password
+      ? (isHashedPassword(p.password) ? p.password : hashPassword(p.password))
+      : undefined,
   }));
   await fs.writeFile(PROFILES_FILE, JSON.stringify({ profiles: encryptedProfiles }, null, 2), "utf-8");
 }

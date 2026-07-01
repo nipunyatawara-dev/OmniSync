@@ -6,17 +6,18 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
+  const nonce = request.headers.get("x-nonce") || "";
 
   if (error || errorDescription) {
     return new NextResponse(
-      renderHtmlResponse(false, "", "", "", errorDescription || error || "Unknown OAuth error"),
+      renderHtmlResponse(nonce, false, "", "", "", errorDescription || error || "Unknown OAuth error"),
       { headers: { "Content-Type": "text/html" } }
     );
   }
 
   if (!code) {
     return new NextResponse(
-      renderHtmlResponse(false, "", "", "", "No authorization code returned from GitHub"),
+      renderHtmlResponse(nonce, false, "", "", "", "No authorization code returned from GitHub"),
       { headers: { "Content-Type": "text/html" } }
     );
   }
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
 
     if (!clientId || !clientSecret) {
       return new NextResponse(
-        renderHtmlResponse(false, "", "", "", "GitHub OAuth Application is not configured on the server"),
+        renderHtmlResponse(nonce, false, "", "", "", "GitHub OAuth Application is not configured on the server"),
         { headers: { "Content-Type": "text/html" } }
       );
     }
@@ -45,13 +46,14 @@ export async function GET(request: Request) {
         client_secret: clientSecret,
         code,
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     const tokenData = await tokenRes.json();
 
     if (tokenData.error) {
       return new NextResponse(
-        renderHtmlResponse(false, "", "", "", tokenData.error_description || tokenData.error),
+        renderHtmlResponse(nonce, false, "", "", "", tokenData.error_description || tokenData.error),
         { headers: { "Content-Type": "text/html" } }
       );
     }
@@ -65,12 +67,14 @@ export async function GET(request: Request) {
         Accept: "application/vnd.github+json",
         "User-Agent": "OmniSync-Local-Client",
       },
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!userRes.ok) {
       const userErr = await userRes.text();
+      console.error("[auth/callback] profile fetch failed:", userRes.status, userErr);
       return new NextResponse(
-        renderHtmlResponse(false, "", "", "", `Failed to retrieve GitHub profile: ${userErr}`),
+        renderHtmlResponse(nonce, false, "", "", "", "Failed to retrieve GitHub profile"),
         { headers: { "Content-Type": "text/html" } }
       );
     }
@@ -80,16 +84,28 @@ export async function GET(request: Request) {
     const avatarUrl = userData.avatar_url || "";
 
     return new NextResponse(
-      renderHtmlResponse(true, accessToken, username, avatarUrl),
+      renderHtmlResponse(nonce, true, accessToken, username, avatarUrl),
       { headers: { "Content-Type": "text/html" } }
     );
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[auth/callback] failed:", err);
     return new NextResponse(
-      renderHtmlResponse(false, "", "", "", `OAuth Callback Error: ${msg}`),
+      renderHtmlResponse(nonce, false, "", "", "", "OAuth callback error"),
       { headers: { "Content-Type": "text/html" } }
     );
   }
+}
+
+// Serialize an object safely for embedding in an inline <script> block.
+// JSON.stringify alone does not escape sequences like </script> or the
+// line/paragraph separators that can break out of the script context.
+function serializeForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
 function escapeHtml(str: string): string {
@@ -102,15 +118,17 @@ function escapeHtml(str: string): string {
 }
 
 function renderHtmlResponse(
+  nonce: string,
   success: boolean,
   token: string,
   username: string,
   avatarUrl: string,
   errorMessage = ""
 ) {
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
   const safeUsername = escapeHtml(username);
   const safeError = escapeHtml(errorMessage);
-  const statusObject = JSON.stringify({
+  const statusObject = serializeForScript({
     success,
     token,
     username,
@@ -176,7 +194,7 @@ function renderHtmlResponse(
     <p>${success ? "Closing this window and returning to OmniSync..." : "You can close this window and try again."}</p>
     ${success ? '<div class="spinner"></div>' : ""}
   </div>
-  <script>
+  <script${nonceAttr}>
     const status = ${statusObject};
     
     try {

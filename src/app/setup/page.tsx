@@ -31,7 +31,11 @@ export default function SetupPage() {
 
   // OAuth / Git Connection State
   const [gitUsername, setGitUsername] = useState("");
+  // gitToken is held only in memory for the duration of an active setup session
+  // (never persisted to localStorage). Once a profile is saved, the server holds
+  // the token and drives all GitHub requests.
   const [gitToken, setGitToken] = useState("");
+  const [githubConnected, setGithubConnected] = useState(false);
 
   // Settings & App Documentation Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -84,12 +88,9 @@ export default function SetupPage() {
         body: JSON.stringify({ action: "select", id: null }),
       });
     } catch {}
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("omnisync_git_token");
-      localStorage.removeItem("omnisync_git_username");
-    }
     setGitToken("");
     setGitUsername("");
+    setGithubConnected(false);
     setGithubUserDetail(null);
     setStep("login");
   };
@@ -223,11 +224,15 @@ export default function SetupPage() {
           
           setGitUsername(data.username);
           setGitToken(data.token);
-          fetchGithubUserDetail(data.token);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("omnisync_git_token", data.token);
-            localStorage.setItem("omnisync_git_username", data.username);
-          }
+          setGithubConnected(true);
+          setGithubUserDetail({
+            avatarUrl: data.avatarUrl || "",
+            htmlUrl: "",
+            name: data.username,
+            bio: "Active developer profile",
+            publicRepos: 0,
+            login: data.username,
+          });
           setManualPath(process.cwd());
           
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -317,12 +322,13 @@ export default function SetupPage() {
     if (step === "repo-selection") {
       Promise.resolve().then(() => {
         if (!active) return;
-        if (gitToken) {
+        if (githubConnected) {
           setSetupMode("clone");
           setIsFetchingRepos(true);
-          fetch("/api/github/repos", {
-            headers: { Authorization: `Bearer ${gitToken}` },
-          })
+          // Send the in-memory token only during initial setup; returning
+          // sessions rely on the server-stored token.
+          const options = gitToken ? { headers: { Authorization: `Bearer ${gitToken}` } } : undefined;
+          fetch("/api/github/repos", options)
             .then((res) => res.json())
             .then((data) => {
               if (!active) return;
@@ -352,7 +358,7 @@ export default function SetupPage() {
     return () => {
       active = false;
     };
-  }, [step, gitToken]);
+  }, [step, githubConnected, gitToken]);
 
   // Handle repository selection change to update default clone path
   const handleRepoChange = (repoId: string) => {
@@ -415,7 +421,7 @@ export default function SetupPage() {
         body: JSON.stringify({
           cloneUrl: repo.cloneUrl,
           localPath: clonePath,
-          token: gitToken,
+          token: gitToken || undefined,
         }),
       });
 
@@ -515,21 +521,19 @@ export default function SetupPage() {
     }
   };
 
-  // Fetch logged in GitHub user details
-  const fetchGithubUserDetail = async (token: string) => {
-    if (!token) return;
+  // Fetch logged in GitHub user details via the server, which uses the
+  // stored token. Avoids handling the raw token in the browser.
+  const fetchGithubUserDetail = async () => {
     try {
-      const res = await fetch("https://api.github.com/user", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch("/api/github/user");
       if (res.ok) {
         const data = await res.json();
         setGithubUserDetail({
-          avatarUrl: data.avatar_url,
-          htmlUrl: data.html_url,
+          avatarUrl: data.avatarUrl,
+          htmlUrl: data.htmlUrl,
           name: data.name || data.login,
           bio: data.bio || "Active developer profile",
-          publicRepos: data.public_repos,
+          publicRepos: data.publicRepos,
           login: data.login,
         });
       }
@@ -546,12 +550,13 @@ export default function SetupPage() {
       const profiles = data.profiles || [];
       setProfilesList(profiles);
 
-      // Auto-restore git token from existing profiles if present
-      const profileWithToken = profiles.find((p: UserProfile) => p.gitToken);
-      if (profileWithToken && profileWithToken.gitToken) {
-        setGitToken(profileWithToken.gitToken);
+      // Restore GitHub connection state from existing profiles. The token stays
+      // server-side; the client only learns that a token exists.
+      const profileWithToken = profiles.find((p: UserProfile) => p.hasGitToken);
+      if (profileWithToken) {
+        setGithubConnected(true);
         setGitUsername(profileWithToken.name);
-        fetchGithubUserDetail(profileWithToken.gitToken);
+        fetchGithubUserDetail();
       }
 
       if (profiles.length > 0) {
@@ -564,16 +569,6 @@ export default function SetupPage() {
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      if (typeof window !== "undefined") {
-        const savedToken = localStorage.getItem("omnisync_git_token");
-        const savedUsername = localStorage.getItem("omnisync_git_username");
-        if (savedToken) {
-          setGitToken(savedToken);
-          setStep("profile-selection");
-          fetchGithubUserDetail(savedToken);
-        }
-        if (savedUsername) setGitUsername(savedUsername);
-      }
       loadProfiles();
       checkOauthConfig();
     });
@@ -583,9 +578,11 @@ export default function SetupPage() {
     if (params.get("oauth_success") === "true") {
       let token = "";
       let username = "";
+      let avatarUrl = "";
       try {
         token = sessionStorage.getItem("oauth_token") || "";
         username = sessionStorage.getItem("oauth_username") || "";
+        avatarUrl = sessionStorage.getItem("oauth_avatar") || "";
         sessionStorage.removeItem("oauth_token");
         sessionStorage.removeItem("oauth_username");
         sessionStorage.removeItem("oauth_avatar");
@@ -596,9 +593,17 @@ export default function SetupPage() {
         Promise.resolve().then(() => {
           setGitUsername(username);
           setGitToken(token);
+          setGithubConnected(true);
+          setGithubUserDetail({
+            avatarUrl,
+            htmlUrl: "",
+            name: username,
+            bio: "Active developer profile",
+            publicRepos: 0,
+            login: username,
+          });
           setManualPath(process.cwd());
           setStep("profile-selection");
-          fetchGithubUserDetail(token);
         });
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -615,6 +620,9 @@ export default function SetupPage() {
     if (!gitUsername) {
       alert("Please enter a username");
       return;
+    }
+    if (gitToken) {
+      setGithubConnected(true);
     }
     setManualPath(process.cwd());
     setStep("profile-selection");
@@ -1098,8 +1106,8 @@ export default function SetupPage() {
                 </p>
               </div>
 
-              {/* Tab Switcher if token is available */}
-              {gitToken && (
+              {/* Tab Switcher if a GitHub connection is available */}
+              {githubConnected && (
                 <div className="flex bg-surface-container-high p-xs rounded-xl mb-lg w-full max-w-[340px] border border-outline-variant/30 gap-xs">
                   <button
                     type="button"
@@ -1135,7 +1143,7 @@ export default function SetupPage() {
               )}
 
               {/* CLONE MODE CONTENT */}
-              {setupMode === "clone" && gitToken && (
+              {setupMode === "clone" && githubConnected && (
                 <div>
                   {isFetchingRepos ? (
                     <div className="flex flex-col items-center justify-center py-xl gap-sm border border-outline-variant rounded-xl bg-surface-container/50">

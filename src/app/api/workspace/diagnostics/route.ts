@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { getActiveProfile } from "@/lib/profiles";
 import { execFile, spawn } from "child_process";
-import fs from "fs";
+import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 
+const isWin = process.platform === "win32";
+const npmCmd = isWin ? "npm.cmd" : "npm";
 
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET() {
   const profile = await getActiveProfile();
@@ -20,7 +30,7 @@ export async function GET() {
   let npmVersion = "unknown";
   try {
     npmVersion = await new Promise<string>((resolve) => {
-      execFile(process.platform === "win32" ? "npm.cmd" : "npm", ["-v"], { encoding: "utf-8" }, (err, stdout) => {
+      execFile(npmCmd, ["-v"], { encoding: "utf-8", timeout: 10000 }, (err, stdout) => {
         resolve(err ? "unknown" : stdout.trim());
       });
     });
@@ -29,7 +39,7 @@ export async function GET() {
   let enginesNode = "*";
   let dependencies: Record<string, string> = {};
   const missingDeps: string[] = [];
-  const packageJsonExists = fs.existsSync(packageJsonPath);
+  const packageJsonExists = await pathExists(packageJsonPath);
 
   let projectName = "Unnamed Project";
   let projectVersion = "1.0.0";
@@ -38,7 +48,7 @@ export async function GET() {
 
   if (packageJsonExists) {
     try {
-      const pkgContent = fs.readFileSync(packageJsonPath, "utf-8");
+      const pkgContent = await fs.readFile(packageJsonPath, "utf-8");
       const pkg = JSON.parse(pkgContent);
       enginesNode = pkg.engines?.node || "*";
       dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
@@ -48,11 +58,14 @@ export async function GET() {
       projectDescription = pkg.description || projectDescription;
       projectLicense = pkg.license || projectLicense;
 
-      for (const dep of Object.keys(dependencies)) {
-        const depPath = path.join(cwd, "node_modules", dep);
-        if (!fs.existsSync(depPath)) {
-          missingDeps.push(dep);
-        }
+      const depChecks = await Promise.all(
+        Object.keys(dependencies).map(async (dep) => ({
+          dep,
+          exists: await pathExists(path.join(cwd, "node_modules", dep)),
+        }))
+      );
+      for (const { dep, exists } of depChecks) {
+        if (!exists) missingDeps.push(dep);
       }
     } catch {}
   }
@@ -75,7 +88,7 @@ export async function GET() {
   let gitStatus = "Clean";
   try {
     const gitOut = await new Promise<string>((resolve, reject) => {
-      execFile("git", ["status", "--porcelain"], { cwd, encoding: "utf-8" }, (err, stdout) => {
+      execFile("git", ["status", "--porcelain"], { cwd, encoding: "utf-8", timeout: 15000 }, (err, stdout) => {
         if (err) reject(err);
         else resolve(stdout.trim());
       });
@@ -133,18 +146,16 @@ export async function POST(request: Request) {
     const { action } = await request.json();
     const encoder = new TextEncoder();
 
-    const cmd = "npm";
+    const cmd = npmCmd;
     let args: string[] = [];
 
     if (action === "clean-cache") {
       args = ["cache", "clean", "--force"];
     } else if (action === "clean-modules") {
       const nodeModulesPath = path.join(cwd, "node_modules");
-      if (fs.existsSync(nodeModulesPath)) {
-        try {
-          fs.rmSync(nodeModulesPath, { recursive: true, force: true });
-        } catch {}
-      }
+      try {
+        await fs.rm(nodeModulesPath, { recursive: true, force: true });
+      } catch {}
       args = ["install"];
     } else if (action === "audit-fix") {
       args = ["audit", "fix", "--force"];
@@ -174,7 +185,7 @@ export async function POST(request: Request) {
         sendLog(`> Running maintenance command inside ${cwd}:`);
         sendLog(`> ${cmd} ${args.join(" ")}`);
 
-        const child = spawn(cmd, args, { cwd, shell: true });
+        const child = spawn(cmd, args, { cwd, shell: isWin });
 
         child.stdout?.on("data", (data) => {
           const lines = data.toString().split("\n");
@@ -213,7 +224,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[diagnostics] POST failed:", err);
+    return NextResponse.json({ error: "Maintenance command failed" }, { status: 500 });
   }
 }

@@ -11,7 +11,13 @@ import {
 export async function GET() {
   const profiles = await getProfiles();
   const activeProfileId = await getActiveProfileId();
-  return NextResponse.json({ profiles, activeProfileId });
+  // Never expose the local access password hash or the GitHub token to the client.
+  // Surface only a boolean flag indicating whether a token is stored.
+  const sanitized = profiles.map(({ password: _password, gitToken, ...rest }) => ({
+    ...rest,
+    hasGitToken: !!gitToken,
+  }));
+  return NextResponse.json({ profiles: sanitized, activeProfileId });
 }
 
 export async function POST(request: Request) {
@@ -54,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[profiles] request failed:", error);
+    return NextResponse.json({ error: "Profile operation failed" }, { status: 500 });
   }
 }

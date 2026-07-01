@@ -18,17 +18,24 @@ export async function GET(request: Request) {
   try {
     const rootPath = path.resolve(profile.workspacePath);
     const absolutePath = path.resolve(rootPath, relativeFile);
-    
+
     // Check for path traversal
     if (!absolutePath.startsWith(rootPath + path.sep) && absolutePath !== rootPath) {
       return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 });
     }
 
-    const content = await fs.readFile(absolutePath, "utf-8");
+    // Resolve symlinks and re-verify containment to prevent symlink escape.
+    const realRoot = await fs.realpath(rootPath);
+    const realPath = await fs.realpath(absolutePath);
+    if (!realPath.startsWith(realRoot + path.sep) && realPath !== realRoot) {
+      return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 });
+    }
+
+    const content = await fs.readFile(realPath, "utf-8");
     return NextResponse.json({ content });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[file-content] read failed:", err);
+    return NextResponse.json({ error: "Failed to read file" }, { status: 500 });
   }
 }
 
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
     await fs.writeFile(absolutePath, content, "utf-8");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[file-content] write failed:", err);
+    return NextResponse.json({ error: "Failed to write file" }, { status: 500 });
   }
 }

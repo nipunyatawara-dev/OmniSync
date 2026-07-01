@@ -24,6 +24,7 @@ export async function POST(request: Request) {
         device_code: deviceCode,
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     const data = await res.json();
@@ -44,11 +45,13 @@ export async function POST(request: Request) {
         Accept: "application/vnd.github+json",
         "User-Agent": "OmniSync-Local-Client",
       },
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!userRes.ok) {
       const userErr = await userRes.text();
-      return NextResponse.json({ status: "error", error: `Failed to retrieve GitHub profile: ${userErr}` });
+      console.error("[auth/device/poll] profile fetch failed:", userRes.status, userErr);
+      return NextResponse.json({ status: "error", error: "Failed to retrieve GitHub profile" });
     }
 
     const userData = await userRes.json();
@@ -62,7 +65,7 @@ export async function POST(request: Request) {
       avatarUrl,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ status: "error", error: msg }, { status: 500 });
+    console.error("[auth/device/poll] failed:", error);
+    return NextResponse.json({ status: "error", error: "Authorization polling failed" }, { status: 500 });
   }
 }

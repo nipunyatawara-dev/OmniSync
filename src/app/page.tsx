@@ -800,8 +800,8 @@ export default function DashboardPage() {
         <div className="header-brand">
           <img src="/icon.png" alt="Logo" style={{ height: "20px", width: "20px", objectFit: "contain", borderRadius: "4px" }} />
           <span style={{ fontSize: "14px", fontWeight: "600" }}>{activeProfile?.name || "OmniSync Workspace"}</span>
-          <span className={`badge ${activeProfile?.gitToken ? "badge-success" : "badge-info"}`} style={{ fontSize: "10px", marginLeft: "4px" }}>
-            {activeProfile?.gitToken ? "GitHub Connected" : "Local Only"}
+          <span className={`badge ${activeProfile?.hasGitToken ? "badge-success" : "badge-info"}`} style={{ fontSize: "10px", marginLeft: "4px" }}>
+            {activeProfile?.hasGitToken ? "GitHub Connected" : "Local Only"}
           </span>
         </div>
 

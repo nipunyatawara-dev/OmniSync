@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { getActiveProfile } from "@/lib/profiles";
 import { execFile } from "child_process";
-import fs from "fs";
+import { promises as fs } from "fs";
 import path from "path";
 import { getRunnerLogs } from "@/lib/runner";
+
+const isWin = process.platform === "win32";
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // GET: Scan workspace directory and return available launch targets
 export async function GET() {
@@ -16,8 +27,8 @@ export async function GET() {
   const launchOptions: string[] = [];
 
   try {
-    if (fs.existsSync(cwd)) {
-      const files = fs.readdirSync(cwd);
+    if (await pathExists(cwd)) {
+      const files = await fs.readdir(cwd);
       const hasXcode = files.some(
         (f) => f.endsWith(".xcworkspace") || f.endsWith(".xcodeproj") || f === "ios" || f === "macos"
       );
@@ -26,9 +37,9 @@ export async function GET() {
       }
 
       const packageJsonPath = path.join(cwd, "package.json");
-      if (fs.existsSync(packageJsonPath)) {
+      if (await pathExists(packageJsonPath)) {
         try {
-          const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+          const pkg = JSON.parse(await fs.readFile(packageJsonPath, "utf-8"));
           const deps = { ...pkg.dependencies, ...pkg.devDependencies };
           const scripts = pkg.scripts || {};
 
@@ -74,7 +85,7 @@ export async function POST(request: Request) {
       else if (ide === "codex") appName = "Codex";
 
       if (appName) {
-        execFile("open", ["-a", appName, cwd], (err) => {
+        execFile("open", ["-a", appName, cwd], { timeout: 15000 }, (err) => {
           if (err) {
             console.error(`Failed to launch ${appName}:`, err);
           }
@@ -97,14 +108,14 @@ export async function POST(request: Request) {
         }
       }
 
-      execFile("open", [url], (err) => {
+      execFile("open", [url], { timeout: 15000 }, (err) => {
         if (err) console.error("Failed to open URL:", err);
       });
       return NextResponse.json({ success: true, url });
     }
 
     if (type === "xcode") {
-      const files = fs.readdirSync(cwd);
+      const files = await fs.readdir(cwd);
       let targetFile = files.find((f) => f.endsWith(".xcworkspace"));
       if (!targetFile) {
         targetFile = files.find((f) => f.endsWith(".xcodeproj"));
@@ -114,8 +125,8 @@ export async function POST(request: Request) {
       if (!targetFile) {
         for (const sub of ["ios", "macos"]) {
           const subPath = path.join(cwd, sub);
-          if (fs.existsSync(subPath)) {
-            const subFiles = fs.readdirSync(subPath);
+          if (await pathExists(subPath)) {
+            const subFiles = await fs.readdir(subPath);
             const match = subFiles.find((f) => f.endsWith(".xcworkspace") || f.endsWith(".xcodeproj"));
             if (match) {
               targetFile = `${sub}/${match}`;
@@ -129,14 +140,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "No Xcode workspace or project file found." }, { status: 400 });
       }
 
-      execFile("open", [path.join(cwd, targetFile)], (err) => {
+      execFile("open", [path.join(cwd, targetFile)], { timeout: 15000 }, (err) => {
         if (err) console.error("Failed to open Xcode project/workspace:", err);
       });
       return NextResponse.json({ success: true });
     }
 
     if (type === "electron") {
-      const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+      const npmCmd = isWin ? "npm.cmd" : "npm";
       execFile(npmCmd, ["run", "electron"], { cwd }, (err) => {
         if (err) console.error("Failed to run Electron process:", err);
       });
@@ -145,7 +156,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Invalid launch type" }, { status: 400 });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[launch] failed:", err);
+    return NextResponse.json({ error: "Launch failed" }, { status: 500 });
   }
 }

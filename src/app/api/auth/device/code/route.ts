@@ -18,6 +18,7 @@ export async function POST() {
         client_id: clientId,
         scope: "repo,user",
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     const data = await res.json();
@@ -33,7 +34,7 @@ export async function POST() {
       expiresIn: data.expires_in,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[auth/device/code] failed:", error);
+    return NextResponse.json({ error: "Failed to start device authorization" }, { status: 500 });
   }
 }

@@ -59,9 +59,10 @@ export function startRunner(cwd: string) {
   appendLog(`Executing: npm run dev`);
 
   try {
-    const child = spawn("npm", ["run", "dev"], {
+    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    const child = spawn(npmCmd, ["run", "dev"], {
       cwd,
-      shell: true,
+      shell: process.platform === "win32",
       env: { ...process.env, FORCE_COLOR: "1" },
     });
 

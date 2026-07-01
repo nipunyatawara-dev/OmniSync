@@ -76,8 +76,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[git] GET failed:", err);
+    return NextResponse.json({ error: "Failed to read git data" }, { status: 500 });
   }
 }
 
@@ -93,26 +93,30 @@ export async function POST(request: Request) {
     const { action, branch } = await request.json();
 
     if (action === "switch-branch") {
-      if (!branch) return NextResponse.json({ error: "Branch parameter missing" }, { status: 400 });
-      
-      // Use execFile asynchronously to avoid event loop blocking and prevent command injection
+      if (!branch || typeof branch !== "string") {
+        return NextResponse.json({ error: "Branch parameter missing" }, { status: 400 });
+      }
+
+      // Only allow switching to a branch that already exists locally.
+      const branches = await getBranches(cwd);
+      if (!branches.includes(branch)) {
+        return NextResponse.json({ error: "Unknown branch" }, { status: 400 });
+      }
+
       await new Promise<void>((resolve, reject) => {
-        execFile("git", ["checkout", "--", branch], { cwd }, (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
+        execFile("git", ["checkout", branch], { cwd, timeout: 15000 }, (err) => {
+          if (err) reject(err);
+          else resolve();
         });
       });
-      
+
       const current = await getCurrentBranch(cwd);
       return NextResponse.json({ success: true, current });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[git] POST failed:", err);
+    return NextResponse.json({ error: "Failed to perform git operation" }, { status: 500 });
   }
 }

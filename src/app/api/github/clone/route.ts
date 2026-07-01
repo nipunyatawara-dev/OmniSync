@@ -2,13 +2,35 @@ import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
+import { getActiveProfile } from "@/lib/profiles";
 
 export async function POST(request: Request) {
   try {
-    const { cloneUrl, localPath, token } = await request.json();
+    const { cloneUrl, localPath, token: bodyToken } = await request.json();
+
+    // Prefer the server-stored token; fall back to a client-provided token,
+    // which is only used during initial setup before a profile is saved.
+    const profile = await getActiveProfile();
+    const token = profile?.gitToken || bodyToken;
 
     if (!cloneUrl || !localPath || !token) {
       return NextResponse.json({ error: "Missing required parameters: cloneUrl, localPath, or token" }, { status: 400 });
+    }
+
+    if (typeof localPath !== "string" || !path.isAbsolute(localPath)) {
+      return NextResponse.json({ error: "localPath must be an absolute path" }, { status: 400 });
+    }
+
+    // Only allow cloning from GitHub over HTTPS. This prevents the injected
+    // credentials below from being sent to an arbitrary host.
+    let parsedCloneUrl: URL;
+    try {
+      parsedCloneUrl = new URL(cloneUrl);
+    } catch {
+      return NextResponse.json({ error: "Invalid clone URL" }, { status: 400 });
+    }
+    if (parsedCloneUrl.protocol !== "https:" || parsedCloneUrl.hostname !== "github.com") {
+      return NextResponse.json({ error: "Only https://github.com clone URLs are allowed" }, { status: 400 });
     }
 
     // Ensure the parent directory of localPath exists
@@ -26,10 +48,9 @@ export async function POST(request: Request) {
     }
 
     // Inject token into clone URL: https://x-access-token:<token>@github.com/...
-    const urlObj = new URL(cloneUrl);
-    urlObj.username = "x-access-token";
-    urlObj.password = token;
-    const authenticatedUrl = urlObj.toString();
+    parsedCloneUrl.username = "x-access-token";
+    parsedCloneUrl.password = token;
+    const authenticatedUrl = parsedCloneUrl.toString();
 
     // Create a streaming response
     const encoder = new TextEncoder();
@@ -108,7 +129,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: `Clone failed: ${msg}` }, { status: 500 });
+    console.error("[clone] failed:", error);
+    return NextResponse.json({ error: "Clone failed" }, { status: 500 });
   }
 }

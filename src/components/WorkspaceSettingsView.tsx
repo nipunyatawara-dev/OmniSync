@@ -12,7 +12,6 @@ export default function WorkspaceSettingsView({ activeProfile, onProfileUpdated 
   // Workspace / Local Repository configurations
   const [workspacePath, setWorkspacePath] = useState(activeProfile?.workspacePath || "");
   const workspaceType = activeProfile?.workspaceType || "manual";
-  const gitToken = activeProfile?.gitToken || "";
 
   // Repository-specific settings
   const [branchProtection, setBranchProtection] = useState<boolean>(activeProfile?.branchProtection ?? true);
@@ -42,7 +41,6 @@ export default function WorkspaceSettingsView({ activeProfile, onProfileUpdated 
           updates: {
             workspacePath,
             workspaceType,
-            gitToken,
             branchProtection,
             autoFetch,
             port: devPort,
