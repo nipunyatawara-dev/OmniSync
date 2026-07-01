@@ -1,9 +1,17 @@
 import { spawn, ChildProcess } from "child_process";
 
+export interface RunnerStartOptions {
+  runCommand?: string;
+  port?: number;
+  shell?: string;
+}
+
 export interface RunnerStatus {
   status: "stopped" | "starting" | "running" | "error";
   pid: number | null;
   error?: string;
+  runCommand?: string;
+  port?: number;
 }
 
 export interface RunnerState {
@@ -12,6 +20,8 @@ export interface RunnerState {
   logs: string[];
   error?: string;
   cwd: string | null;
+  runCommand: string;
+  port: number;
 }
 
 // Store process references globally in development to handle Next.js hot reloads
@@ -24,10 +34,23 @@ if (!globalRef.runnerState) {
     logs: [],
     error: undefined,
     cwd: null,
+    runCommand: "npm run dev",
+    port: 3000,
   };
 }
 
 const state = globalRef.runnerState;
+
+function resolveShell(explicit?: string): string | boolean {
+  if (process.platform === "win32") {
+    return true;
+  }
+  if (explicit === "bash") return "/bin/bash";
+  if (explicit === "sh") return "/bin/sh";
+  if (explicit === "zsh") return "/bin/zsh";
+  if (explicit) return explicit;
+  return "/bin/zsh";
+}
 
 // Append a log line with time stamp
 function appendLog(text: string) {
@@ -41,29 +64,33 @@ function appendLog(text: string) {
 }
 
 // Start dev server in target directory
-export function startRunner(cwd: string) {
+export function startRunner(cwd: string, options: RunnerStartOptions = {}) {
+  const runCommand = options.runCommand?.trim() || "npm run dev";
+  const port = options.port && options.port > 0 ? options.port : 3000;
+
   if (state.status === "running" || state.status === "starting") {
-    // If running in same directory, do nothing
-    if (state.cwd === cwd) {
+    // If running in same directory with same command/port, do nothing
+    if (state.cwd === cwd && state.runCommand === runCommand && state.port === port) {
       return getRunnerStatus();
     }
-    // Otherwise stop first
     stopRunner();
   }
 
   state.status = "starting";
   state.cwd = cwd;
+  state.runCommand = runCommand;
+  state.port = port;
   state.error = undefined;
   state.logs = [];
   appendLog(`Starting development server in directory: ${cwd}...`);
-  appendLog(`Executing: npm run dev`);
+  appendLog(`Executing: ${runCommand} (PORT=${port})`);
 
   try {
-    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-    const child = spawn(npmCmd, ["run", "dev"], {
+    const shell = resolveShell(options.shell);
+    const child = spawn(runCommand, [], {
       cwd,
-      shell: process.platform === "win32",
-      env: { ...process.env, FORCE_COLOR: "1" },
+      shell,
+      env: { ...process.env, PORT: String(port), FORCE_COLOR: "1" },
     });
 
     state.childProcess = child;
@@ -145,6 +172,8 @@ export function getRunnerStatus(): RunnerStatus {
     status: state.status,
     pid: state.childProcess?.pid || null,
     error: state.error,
+    runCommand: state.runCommand,
+    port: state.port,
   };
 }
 

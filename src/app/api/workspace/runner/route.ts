@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getActiveProfile } from "@/lib/profiles";
+import { getGlobalSettings } from "@/lib/globalSettings";
 import { startRunner, stopRunner, getRunnerStatus, getRunnerLogs } from "@/lib/runner";
 
 export async function GET() {
@@ -10,7 +11,12 @@ export async function GET() {
 
   const status = getRunnerStatus();
   const logs = getRunnerLogs();
-  return NextResponse.json({ status, logs });
+  return NextResponse.json({
+    status,
+    logs,
+    runCommand: profile.runCommand || "npm run dev",
+    port: profile.port || 3000,
+  });
 }
 
 export async function POST(request: Request) {
@@ -21,10 +27,17 @@ export async function POST(request: Request) {
 
   try {
     const { action } = await request.json();
+    const global = await getGlobalSettings();
+    const runCommand = profile.runCommand || "npm run dev";
+    const port = profile.port && profile.port > 0 ? profile.port : 3000;
 
     if (action === "start") {
-      const status = startRunner(profile.workspacePath);
-      return NextResponse.json({ success: true, status });
+      const status = startRunner(profile.workspacePath, {
+        runCommand,
+        port,
+        shell: global.terminalShell,
+      });
+      return NextResponse.json({ success: true, status, runCommand, port });
     }
 
     if (action === "stop") {

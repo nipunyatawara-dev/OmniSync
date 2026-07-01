@@ -1,35 +1,150 @@
-# OmniSync - Workspace Flow & Context Summary
+# OmniSync
 
-This file serves as a reference manual for coding agents to understand the system architecture, file structures, state flows, and layout configurations.
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/nipunyatawara-dev/Omnisync)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/nipunyatawara-dev/Omnisync)
+[![Stack](https://img.shields.io/badge/stack-Electron%20%2B%20Next.js-black)](https://github.com/nipunyatawara-dev/Omnisync)
 
-## System Architecture & State Hydration
-1. On mount, `/` (Dashboard) queries `/api/profiles` for user profiles and the active workspace configuration.
-2. If `activeProfileId` is undefined or no profiles are present, the router redirects to `/setup`.
-3. If a workspace is active, the app loads profile details (containing `workspacePath`) and populates state via the following endpoints:
-   - `/api/workspace/files`: Scans project files and constructs the file tree.
-   - `/api/workspace/git?action=branches`: Retrieves git branch list.
-   - `/api/workspace/git?action=status`: Fetches ahead/behind commits count against remote upstream.
-   - `/api/workspace/git?action=conflicts`: Scans for files containing git merge conflict markers (`<<<<<<<`).
-   - `/api/workspace/diagnostics`: Verifies engine compatibility and runs checks.
+---
 
-## Router Pages & Wizard Steps (`/setup`)
-- **Step 1: Account Login (`login`)**: Setup connection via simulated OAuth or username inputs. Bypassed automatically if existing profiles exist on the machine.
-- **Step 2: Workspace Select (`profile-selection`)**: A grid displaying all configured local workspace folders. Displays a "+" card to register a new workspace.
-- **Step 3: Setup Mode (`repo-selection`)**: Toggles between:
-  - **GitHub setup**: Clones a remote repository to a local path.
-  - **Local setup**: Scans and registers an existing local path manually.
-  Both setup options create a new user profile record, make it the active session profile, and redirect back to the home dashboard (`/`).
+### Get started
 
-## Tab View Switchers
-Inside the active workspace dashboard (`/`), the sidebar routes the client view across:
-- **Workspace Code Tab (`activeTab === "workspace"`)**:
-  - File tree on the left, Resizer dividers, central tabbed Editor (Markdown rendered if `.md` extension, raw text otherwise).
-  - Resizable right Git column displaying the file commit history timeline and the line diff analyzer.
-  - Compiler runner console showing live stdout/stderr compiler logs.
-- **Git Conflicts Resolver Tab (`activeTab === "git"`)**:
-  - Displays files with merge conflicts. Clicking one opens the interactive three-pane conflict resolver (Current changes, Incoming changes, and final output compiler).
-- **Diagnostics Scanner Tab (`activeTab === "diagnostics"`)**:
-  - Displays environment warnings, Node compatibility flags, and missing dependencies, offering direct triggers for package fixes.
-- **Workspace Settings Tab (`activeTab === "settings"`)**:
-  - Form variables to update the local directory path, branch protection rules, auto fetch settings, and custom development script lines.
-  - Danger Zone: Disconnects the project, deletes the profile from disk, and routes the user back to the workspace selection list.
+* [Latest release](https://github.com/nipunyatawara-dev/Omnisync/releases/latest)
+* [Clone & run from source](#development)
+
+---
+
+**OmniSync** is a desktop workspace launcher and sync dashboard for local and GitHub-backed repositories — built with Electron and Next.js.
+
+* Multi-workspace profiles with one-click switching
+* Clone from GitHub or register an existing local folder
+* Integrated file tree, tabbed editor, and Markdown preview
+* Git branch switcher with ahead/behind sync status
+* Three-pane merge conflict resolver
+* Environment diagnostics (Node engines, dependencies, git health)
+* Built-in dev server runner with live stdout/stderr
+* Launch targets: browser, Electron shell, Xcode, and popular IDEs
+* Encrypted credential storage via the OS keychain
+
+# Contents
+
+- [What OmniSync is and isn't](#what-omnisync-is-and-isnt)
+- [Setup wizard](#setup-wizard)
+- [Workspace](#workspace)
+- [Git sync & conflicts](#git-sync--conflicts)
+- [Diagnostics](#diagnostics)
+- [Dev runner](#dev-runner)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+
+# What OmniSync is and isn't
+
+* **OmniSync is** a workspace hub that connects your local repositories, Git remotes, and development tooling into one desktop dashboard.
+
+* **OmniSync is not** a full IDE or a replacement for Git on the command line. It orchestrates your workspace — it doesn't replace your editor of choice. Use it alongside Cursor, VS Code, Xcode, or IntelliJ.
+
+# Setup wizard
+
+On first launch, OmniSync walks you through a short setup flow at `/setup`:
+
+1. **Account login** — Connect via GitHub OAuth or a personal access token. Skipped automatically if profiles already exist on this machine.
+2. **Workspace select** — Pick from configured local workspaces or add a new one with the **+** card.
+3. **Setup mode** — Choose one of two paths:
+   - **GitHub** — Clone a remote repository to a local path.
+   - **Local** — Point OmniSync at an existing folder on disk.
+
+Both paths create a profile, set it as the active session, and redirect to the dashboard.
+
+# Workspace
+
+The main dashboard (`/`) is organized around a sidebar with five views:
+
+| Tab | What it does |
+| --- | --- |
+| **Workspace** | File tree, resizable editor panes, git history column, and line diff viewer |
+| **Git Sync** | Branch list, upstream status, and the conflict resolver |
+| **Diagnostics** | Environment audits and one-click dependency repairs |
+| **Timeline** | Repository commit calendar and history |
+| **Settings** | Workspace path, branch protection, auto-fetch, and custom run scripts |
+
+**Workspace view** highlights:
+
+* Browse and open files from a live-scanned project tree
+* Tabbed editor with Markdown rendering for `.md` files
+* Resizable panels — drag dividers to fit your layout
+* Commit timeline and per-file diff analysis in the right column
+
+# Git sync & conflicts
+
+OmniSync keeps you oriented relative to your remote:
+
+* Lists local and remote branches
+* Shows commits **ahead** and **behind** upstream
+* Scans for merge conflict markers (`<<<<<<<`)
+
+When conflicts are found, the **Git Sync** tab opens an interactive three-pane resolver:
+
+* **Current** (yours) on the left
+* **Incoming** (theirs) on the right
+* **Result** in the center — accept blocks individually to build the resolved file
+
+# Diagnostics
+
+The diagnostics scanner verifies your workspace is ready to run:
+
+* Node.js version vs. `engines.node` in `package.json`
+* Missing `node_modules` dependencies
+* Git repository health
+* Project metadata (name, version, license)
+
+Warnings surface actionable fixes — including triggers to install missing packages.
+
+# Dev runner
+
+Start, stop, and monitor development servers from the dashboard:
+
+* Live **stdout** / **stderr** in the runner console
+* Configurable `runCommand` and `buildCommand` per workspace
+* Launch the running app in a browser, Electron wrapper, or native IDE once the server is up
+
+# Development
+
+### Prerequisites
+
+* Node.js 20+
+* npm
+
+### Run locally
+
+```bash
+git clone https://github.com/nipunyatawara-dev/Omnisync.git
+cd Omnisync
+npm install
+npm run dev        # Next.js dev server
+npm run electron   # Electron shell (separate terminal)
+```
+
+### Build
+
+```bash
+npm run build
+npm start
+```
+
+Profile data, encrypted secrets, and workspace configuration are stored under `User data/` in the project root.
+
+
+# Contributing
+
+Pull requests are welcome.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Commit your changes
+4. Push and open a pull request
+
+Please keep changes focused and match the existing code style.
+
+---
+
+Built for developers who juggle multiple repos and want one place to sync, diagnose, and launch.

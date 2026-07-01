@@ -98,7 +98,8 @@ export async function POST(request: Request) {
     if (type === "browser") {
       const logs = getRunnerLogs();
       const urlRegex = /http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]):(\d+)/i;
-      let url = `http://localhost:${port || 3000}`; // fallback default
+      const defaultPort = profile.port && profile.port > 0 ? profile.port : 3000;
+      let url = `http://localhost:${port || defaultPort}`;
       
       for (let i = logs.length - 1; i >= 0; i--) {
         const match = logs[i].match(urlRegex);

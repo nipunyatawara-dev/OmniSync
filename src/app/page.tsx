@@ -90,6 +90,8 @@ export default function DashboardPage() {
 
   // Git Collaboration state
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ ahead: 0, behind: 0, upstream: "" });
+  const [branchProtected, setBranchProtected] = useState(false);
+  const [autoFetchIntervalMinutes, setAutoFetchIntervalMinutes] = useState(0);
   const [conflictFiles, setConflictFiles] = useState<string[]>([]);
   const [selectedConflictFile, setSelectedConflictFile] = useState<string | null>(null);
 
@@ -283,6 +285,12 @@ export default function DashboardPage() {
       const res = await fetch("/api/workspace/git?action=status");
       const data = await res.json();
       setSyncStatus((data.sync as SyncStatus) || { ahead: 0, behind: 0, upstream: "" });
+      if (typeof data.branchProtected === "boolean") {
+        setBranchProtected(data.branchProtected);
+      }
+      if (typeof data.autoFetchIntervalMinutes === "number") {
+        setAutoFetchIntervalMinutes(data.autoFetchIntervalMinutes);
+      }
     } catch {}
   };
 
@@ -421,11 +429,12 @@ export default function DashboardPage() {
   };
 
   const handleLaunchTarget = async (type: string) => {
+    const port = activeProfile?.port && activeProfile.port > 0 ? activeProfile.port : 3000;
     try {
       await fetch("/api/workspace/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, port: 3000 }),
+        body: JSON.stringify({ type, port }),
       });
       showNotification(
         `Launching ${type === "xcode" ? "Xcode Workspace" : type === "electron" ? "Electron App" : "Local Browser"}...`,
@@ -477,6 +486,33 @@ export default function DashboardPage() {
       } catch {}
     });
   }, [activeProfile]);
+
+  // Background git fetch driven by workspace + global settings
+  useEffect(() => {
+    if (!activeProfile || activeProfile.autoFetch === false) return;
+    if (!autoFetchIntervalMinutes || autoFetchIntervalMinutes <= 0) return;
+
+    const intervalMs = autoFetchIntervalMinutes * 60 * 1000;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch("/api/workspace/git", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fetch" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sync) {
+            setSyncStatus(data.sync as SyncStatus);
+          } else {
+            loadGitSyncStatus();
+          }
+        }
+      } catch {}
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [activeProfile, activeProfile?.autoFetch, autoFetchIntervalMinutes]);
 
   // 3. Poll runner logs and status while running
   useEffect(() => {
@@ -636,6 +672,9 @@ export default function DashboardPage() {
       const data = await res.json();
       if (data.success) {
         setCurrentBranch(data.current);
+        if (typeof data.branchProtected === "boolean") {
+          setBranchProtected(data.branchProtected);
+        }
         loadWorkspaceFiles();
         setActiveFile(null);
       } else {
@@ -803,6 +842,11 @@ export default function DashboardPage() {
           <span className={`badge ${activeProfile?.hasGitToken ? "badge-success" : "badge-info"}`} style={{ fontSize: "10px", marginLeft: "4px" }}>
             {activeProfile?.hasGitToken ? "GitHub Connected" : "Local Only"}
           </span>
+          {branchProtected && (
+            <span className="badge badge-warning" style={{ fontSize: "10px" }} title="Direct commits to main/master are blocked">
+              Branch Protected
+            </span>
+          )}
         </div>
 
         {/* Profile Card Header Info */}
@@ -986,6 +1030,11 @@ export default function DashboardPage() {
                     {runnerStatus?.status === "starting" && <span style={{ color: "var(--color-attention-fg)" }}>Starting...</span>}
                     {runnerStatus?.status === "stopped" && <span>Dev Server Stopped</span>}
                     {runnerStatus?.status === "error" && <span style={{ color: "var(--color-danger-fg)" }}>Error: {runnerStatus?.error}</span>}
+                    {activeProfile?.runCommand && (
+                      <span style={{ fontSize: "11px", color: "var(--color-fg-subtle)", fontFamily: "var(--font-mono)" }}>
+                        {activeProfile.runCommand}
+                      </span>
+                    )}
 
                     {runnerStatus?.status === "running" && (
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "8px" }}>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { getActiveProfile } from "@/lib/profiles";
+import { getGlobalSettings } from "@/lib/globalSettings";
 
 interface FileNode {
   name: string;
@@ -25,6 +26,7 @@ const IGNORE_DIRS = new Set([
 async function buildFileTree(
   dirPath: string,
   rootPath: string,
+  showHiddenFiles: boolean,
   depth = 0,
   maxDepth = 15,
   visited = new Set<string>()
@@ -44,6 +46,7 @@ async function buildFileTree(
 
     for (const entry of entries) {
       if (IGNORE_DIRS.has(entry.name)) continue;
+      if (!showHiddenFiles && entry.name.startsWith(".")) continue;
 
       const fullPath = path.join(resolvedPath, entry.name);
       const relativePath = path.relative(rootPath, fullPath);
@@ -56,7 +59,7 @@ async function buildFileTree(
       };
 
       if (node.isDirectory) {
-        node.children = await buildFileTree(fullPath, rootPath, depth + 1, maxDepth, currentVisited);
+        node.children = await buildFileTree(fullPath, rootPath, showHiddenFiles, depth + 1, maxDepth, currentVisited);
       }
 
       nodes.push(node);
@@ -80,8 +83,9 @@ export async function GET() {
 
   try {
     const rootPath = path.resolve(profile.workspacePath);
-    const tree = await buildFileTree(rootPath, rootPath, 0, 15, new Set<string>());
-    return NextResponse.json({ tree, rootPath });
+    const { showHiddenFiles } = await getGlobalSettings();
+    const tree = await buildFileTree(rootPath, rootPath, showHiddenFiles, 0, 15, new Set<string>());
+    return NextResponse.json({ tree, rootPath, showHiddenFiles });
   } catch (err: unknown) {
     console.error("[files] failed to build tree:", err);
     return NextResponse.json({ error: "Failed to read workspace files" }, { status: 500 });

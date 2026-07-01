@@ -1,5 +1,17 @@
 import { execFile } from "child_process";
 import { promises as fs } from "fs";
+import type { UserProfile } from "@/lib/profiles";
+
+const PROTECTED_BRANCHES = new Set(["main", "master"]);
+
+export function isProtectedBranch(branch: string): boolean {
+  return PROTECTED_BRANCHES.has(branch.toLowerCase());
+}
+
+export function isDirectCommitBlocked(profile: UserProfile | null, branch: string): boolean {
+  if (!profile?.branchProtection) return false;
+  return isProtectedBranch(branch);
+}
 
 export interface GitCommit {
   hash: string;
@@ -12,6 +24,38 @@ export interface DiffLine {
   type: "added" | "removed" | "normal";
   content: string;
   lineNumber?: number;
+}
+
+function execGit(args: string[], cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "git",
+      args,
+      { cwd, encoding: "utf-8", timeout: 20000 },
+      (error) => {
+        if (error) reject(error);
+        else resolve();
+      }
+    );
+  });
+}
+
+/** Apply local git author identity for commits in this workspace */
+export async function applyGitIdentity(
+  cwd: string,
+  name?: string,
+  email?: string
+): Promise<void> {
+  if (name?.trim()) {
+    await execGit(["config", "user.name", name.trim()], cwd);
+  }
+  if (email?.trim()) {
+    await execGit(["config", "user.email", email.trim()], cwd);
+  }
+}
+
+export async function gitFetch(cwd: string): Promise<void> {
+  await execGit(["fetch", "--all", "--prune"], cwd);
 }
 
 // Helper to run commands asynchronously with parameter arrays
@@ -47,7 +91,10 @@ export async function getBranches(cwd: string): Promise<string[]> {
 }
 
 // Get synchronization status relative to upstream
-export async function getSyncStatus(cwd: string): Promise<{ ahead: number; behind: number; upstream: string }> {
+export async function getSyncStatus(
+  cwd: string,
+  defaultBranch?: string
+): Promise<{ ahead: number; behind: number; upstream: string }> {
   const currentBranch = await getCurrentBranch(cwd);
   const statusLine = await runGit(["status", "-sb"], cwd);
   
@@ -71,7 +118,11 @@ export async function getSyncStatus(cwd: string): Promise<{ ahead: number; behin
     }
   }
 
-  return { ahead, behind, upstream: upstream || `origin/${currentBranch}` };
+  const fallbackUpstream = defaultBranch
+    ? `origin/${defaultBranch}`
+    : `origin/${currentBranch}`;
+
+  return { ahead, behind, upstream: upstream || fallbackUpstream };
 }
 
 // Get timeline of recent git commits for a specific file

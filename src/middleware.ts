@@ -28,7 +28,8 @@ function isProtectedApiPath(path: string): boolean {
     path.startsWith("/api/workspace") ||
     path.startsWith("/api/profiles") ||
     path.startsWith("/api/github") ||
-    path.startsWith("/api/auth/config")
+    path.startsWith("/api/auth/config") ||
+    path.startsWith("/api/settings")
   );
 }
 

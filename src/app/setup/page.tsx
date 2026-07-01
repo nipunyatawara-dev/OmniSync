@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter as useAppRouter } from "next/navigation";
+import { applyAccentTheme } from "@/lib/accentTheme";
+import type { AccentColor } from "@/lib/globalSettings";
 import { UserProfile } from "@/lib/profiles";
 
 declare global {
@@ -51,9 +53,31 @@ export default function SetupPage() {
   const [enableTelemetry, setEnableTelemetry] = useState(true);
   const [accentColor, setAccentColor] = useState("default");
 
-  // Load from localStorage on mount
+  // Load from server (fallback to localStorage for legacy installs)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window === "undefined") return;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          const s = data.settings;
+          if (s) {
+            setGlobalGitUsername(s.gitUsername || "");
+            setGlobalGitEmail(s.gitEmail || "");
+            setDefaultBranch(s.defaultBranch || "main");
+            setAutoFetchInterval(s.autoFetchInterval || "5");
+            setTerminalShell(s.terminalShell || "zsh");
+            setShowHiddenFiles(!!s.showHiddenFiles);
+            setEnableTelemetry(s.enableTelemetry !== false);
+            setAccentColor(s.accentColor || "default");
+            applyAccentTheme((s.accentColor || "default") as AccentColor);
+            return;
+          }
+        }
+      } catch {}
+
       setGlobalGitUsername(localStorage.getItem("omnisync_global_git_username") || "");
       setGlobalGitEmail(localStorage.getItem("omnisync_global_git_email") || "");
       setDefaultBranch(localStorage.getItem("omnisync_global_default_branch") || "main");
@@ -61,23 +85,55 @@ export default function SetupPage() {
       setTerminalShell(localStorage.getItem("omnisync_global_terminal_shell") || "zsh");
       setShowHiddenFiles(localStorage.getItem("omnisync_global_show_hidden") === "true");
       setEnableTelemetry(localStorage.getItem("omnisync_global_telemetry") !== "false");
-      setAccentColor(localStorage.getItem("omnisync_global_accent") || "default");
+      const cachedAccent = (localStorage.getItem("omnisync_global_accent") || "default") as AccentColor;
+      setAccentColor(cachedAccent);
+      applyAccentTheme(cachedAccent);
     }
+
+    loadSettings();
   }, []);
 
   // Save settings handler
-  const handleSaveGlobalSettings = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("omnisync_global_git_username", globalGitUsername);
-      localStorage.setItem("omnisync_global_git_email", globalGitEmail);
-      localStorage.setItem("omnisync_global_default_branch", defaultBranch);
-      localStorage.setItem("omnisync_global_auto_fetch_interval", autoFetchInterval);
-      localStorage.setItem("omnisync_global_terminal_shell", terminalShell);
-      localStorage.setItem("omnisync_global_show_hidden", String(showHiddenFiles));
-      localStorage.setItem("omnisync_global_telemetry", String(enableTelemetry));
-      localStorage.setItem("omnisync_global_accent", accentColor);
-      alert("Global settings saved successfully!");
+  const handleSaveGlobalSettings = async () => {
+    if (typeof window === "undefined") return;
+
+    const payload = {
+      gitUsername: globalGitUsername,
+      gitEmail: globalGitEmail,
+      defaultBranch,
+      autoFetchInterval,
+      terminalShell,
+      showHiddenFiles,
+      enableTelemetry,
+      accentColor,
+    };
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to save settings.");
+        return;
+      }
+    } catch {
+      alert("Failed to save settings.");
+      return;
     }
+
+    localStorage.setItem("omnisync_global_git_username", globalGitUsername);
+    localStorage.setItem("omnisync_global_git_email", globalGitEmail);
+    localStorage.setItem("omnisync_global_default_branch", defaultBranch);
+    localStorage.setItem("omnisync_global_auto_fetch_interval", autoFetchInterval);
+    localStorage.setItem("omnisync_global_terminal_shell", terminalShell);
+    localStorage.setItem("omnisync_global_show_hidden", String(showHiddenFiles));
+    localStorage.setItem("omnisync_global_telemetry", String(enableTelemetry));
+    localStorage.setItem("omnisync_global_accent", accentColor);
+    applyAccentTheme(accentColor as AccentColor);
+    alert("Global settings saved successfully!");
   };
 
   const handleLogout = async () => {

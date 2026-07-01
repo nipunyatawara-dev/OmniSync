@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 import ElectronDragHelper from "@/components/ElectronDragHelper";
 import FirstLaunchSplash from "@/components/FirstLaunchSplash";
+import GlobalSettingsBootstrap from "@/components/GlobalSettingsBootstrap";
 
 export default function RootLayout({
   children,
@@ -38,6 +39,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col">
+        <GlobalSettingsBootstrap />
         <ElectronDragHelper />
         <FirstLaunchSplash />
         {children}

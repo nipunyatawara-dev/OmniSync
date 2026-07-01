@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserProfile } from "@/lib/profiles";
 
 interface WorkspaceSettingsViewProps {
@@ -23,6 +23,16 @@ export default function WorkspaceSettingsView({ activeProfile, onProfileUpdated 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!activeProfile) return;
+    setWorkspacePath(activeProfile.workspacePath || "");
+    setBranchProtection(activeProfile.branchProtection ?? true);
+    setAutoFetch(activeProfile.autoFetch ?? true);
+    setDevPort(activeProfile.port ?? 3000);
+    setRunCommand(activeProfile.runCommand ?? "npm run dev");
+    setBuildCommand(activeProfile.buildCommand ?? "npm run build");
+  }, [activeProfile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
