@@ -1,6 +1,7 @@
 {
   "name": "omnisync",
-  "version": "0.1b",
+  "version": "0.1.0",
+  "omnisyncRelease": "0.1b",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -12,12 +13,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron": "electron .",
-    "electron:build": "npm run build:electron && electron-builder --config electron-builder.json",
-    "electron:pack": "npm run build:electron && electron-builder --dir --config electron-builder.json",
-    "electron:pack:mac-arm64": "npm run build:electron && electron-builder --mac dir --arm64 --config electron-builder.json",
-    "electron:pack:mac-x64": "npm run build:electron && electron-builder --mac dir --x64 --config electron-builder.json",
-    "electron:build:mac-arm64": "npm run build:electron && electron-builder --mac dmg --arm64 --config electron-builder.json",
-    "electron:build:mac-x64": "npm run build:electron && electron-builder --mac dmg --x64 --config electron-builder.json",
+    "electron:build": "npm run build:electron && electron-builder --config electron-builder.config.mjs",
+    "electron:pack": "npm run build:electron && electron-builder --dir --config electron-builder.config.mjs",
+    "electron:pack:mac-arm64": "npm run build:electron && electron-builder --mac dir --arm64 --config electron-builder.config.mjs",
+    "electron:pack:mac-x64": "npm run build:electron && electron-builder --mac dir --x64 --config electron-builder.config.mjs",
+    "electron:build:mac-arm64": "npm run build:electron && electron-builder --mac dmg --arm64 --config electron-builder.config.mjs",
+    "electron:build:mac-x64": "npm run build:electron && electron-builder --mac dmg --x64 --config electron-builder.config.mjs",
     "electron:build:mac": "npm run electron:build:mac-arm64 && npm run electron:build:mac-x64"
   },
   "dependencies": {
