@@ -3,14 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserProfile } from "@/lib/profiles";
 
-declare global {
-  interface Window {
-    electron?: {
-      selectDirectory: () => Promise<string | null>;
-    };
-  }
-}
-
 interface WorkspaceSettingsViewProps {
   profile: UserProfile;
   isActive?: boolean;

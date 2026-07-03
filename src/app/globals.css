@@ -2024,6 +2024,154 @@ body.electron-app [role="button"] {
   text-align: center;
 }
 
+/* System permissions prompt */
+.perm-prompt-card {
+  max-width: 460px;
+}
+
+.perm-prompt-brand {
+  background: rgba(88, 166, 255, 0.12);
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.25);
+}
+
+.perm-prompt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 22px 8px;
+}
+
+.perm-prompt-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.perm-prompt-reasons li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+}
+
+.perm-prompt-reasons li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #58a6ff;
+}
+
+.perm-prompt-reasons code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--color-fg-default);
+  background: var(--color-bg-active);
+}
+
+.perm-prompt-primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: #1f6feb;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.perm-prompt-primary-btn:hover {
+  background: #388bfd;
+}
+
+.perm-prompt-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-fg-muted);
+  text-align: center;
+}
+
+.perm-prompt-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  color: var(--color-fg-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.perm-prompt-divider::before,
+.perm-prompt-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-default);
+}
+
+.perm-prompt-secondary-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-fg-default);
+  background: var(--color-bg-active);
+  border: 1px solid var(--color-border-default);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.perm-prompt-secondary-btn:hover:not(:disabled) {
+  border-color: rgba(88, 166, 255, 0.4);
+}
+
+.perm-prompt-secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.perm-prompt-success {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--color-success-fg);
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.25);
+}
+
+.perm-prompt-error {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--color-danger-fg);
+}
+
+.perm-prompt-footer {
+  margin-top: 4px;
+}
+
 /* GitHub connected header badge */
 .gh-connected-badge {
   display: flex;

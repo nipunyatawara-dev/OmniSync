@@ -238,6 +238,65 @@ function createWindow() {
     return result.filePaths[0];
   });
 
+  // Report whether OmniSync has Full Disk Access. TCC.db is only readable with Full
+  // Disk Access granted, and (unlike Documents/Desktop/Downloads) checking it never
+  // triggers a native consent prompt on its own, so this is always safe to call.
+  ipcMain.handle("check-system-permissions", async () => {
+    if (process.platform !== "darwin") {
+      return { platform: process.platform, fullDiskAccess: true };
+    }
+    const tccDbPath = path.join(
+      app.getPath("home"),
+      "Library",
+      "Application Support",
+      "com.apple.TCC",
+      "TCC.db"
+    );
+    let fullDiskAccess = false;
+    try {
+      fs.accessSync(tccDbPath, fs.constants.R_OK);
+      fullDiskAccess = true;
+    } catch {
+      fullDiskAccess = false;
+    }
+    return { platform: process.platform, fullDiskAccess };
+  });
+
+  // Explicitly requested by the user (after we've explained why) so that macOS's
+  // native one-time "OmniSync would like to access files in your ___ folder" consent
+  // dialog appears in context instead of as a surprise the first time we clone/read there.
+  ipcMain.handle("request-folder-access", async (_event, folderName) => {
+    if (process.platform !== "darwin") {
+      return { granted: true };
+    }
+    const allowedFolders = ["Documents", "Desktop", "Downloads"];
+    if (!allowedFolders.includes(folderName)) {
+      return { granted: false, error: "Unsupported folder" };
+    }
+    const dir = path.join(app.getPath("home"), folderName);
+    try {
+      await fs.promises.readdir(dir);
+      return { granted: true };
+    } catch (err) {
+      return { granted: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // Full Disk Access can only ever be toggled by the user in System Settings — Apple
+  // gives apps no way to trigger that consent sheet programmatically — so the best we
+  // can do is deep-link straight to the right Privacy & Security pane.
+  ipcMain.handle("open-privacy-settings", async (_event, pane) => {
+    if (process.platform !== "darwin") return false;
+    const panes = {
+      "full-disk-access": "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+      documents: "x-apple.systempreferences:com.apple.preference.security?Privacy_DocumentsFolder",
+      desktop: "x-apple.systempreferences:com.apple.preference.security?Privacy_DesktopFolder",
+      downloads: "x-apple.systempreferences:com.apple.preference.security?Privacy_DownloadsFolder",
+    };
+    await shell.openExternal(panes[pane] || panes["full-disk-access"]);
+    return true;
+  });
+
   // Open external links in user's default browser (crucial for GitHub Device Flow and PAT link)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);

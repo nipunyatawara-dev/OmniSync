@@ -8,14 +8,7 @@ import RepoVisibilityIcon from "@/components/RepoVisibilityIcon";
 import GitHubConnectModal from "@/components/GitHubConnectModal";
 import GitHubConnectedBadge from "@/components/GitHubConnectedBadge";
 import Loader from "@/components/Loader";
-
-declare global {
-  interface Window {
-    electron?: {
-      selectDirectory: () => Promise<string | null>;
-    };
-  }
-}
+import SystemPermissionsPrompt from "@/components/SystemPermissionsPrompt";
 
 interface DiagnosticScanResult {
   nodeVersion: string;
@@ -1061,6 +1054,8 @@ export default function SetupPage() {
           )}
 
           {/* STEP 2: WORKSPACE PROFILE SELECTION */}
+          {(step === "profile-selection" || step === "repo-selection") && <SystemPermissionsPrompt />}
+
           {step === "profile-selection" && (
             <div>
                <div className="mb-lg">
