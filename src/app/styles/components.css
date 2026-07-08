@@ -209,14 +209,13 @@ select.form-control {
   background-color: rgba(22, 27, 34, 0.45) !important;
 }
 
-.custom-tooltip {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
+.custom-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .custom-tooltip-content {
-  position: absolute;
   background-color: var(--color-bg-overlay);
   color: var(--color-fg-default);
   padding: 6px 10px;
@@ -230,7 +229,18 @@ select.form-control {
   visibility: hidden;
   transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+}
+
+.custom-tooltip-content.custom-tooltip-portal {
+  position: fixed;
+  z-index: 10000;
+  transform: scale(0.95);
+}
+
+.custom-tooltip-content.custom-tooltip-portal.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
 }
 
 /* Tooltip positions & arrows */
@@ -242,16 +252,6 @@ select.form-control {
 }
 
 /* Right Position */
-.custom-tooltip-content.position-right {
-  top: 50%;
-  left: calc(100% + 8px);
-  transform: translateY(-50%) scale(0.95);
-}
-.custom-tooltip:hover .custom-tooltip-content.position-right {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) scale(1);
-}
 .custom-tooltip-content.position-right::after {
   top: 50%;
   right: 100%;
@@ -260,16 +260,6 @@ select.form-control {
 }
 
 /* Left Position */
-.custom-tooltip-content.position-left {
-  top: 50%;
-  right: calc(100% + 8px);
-  transform: translateY(-50%) scale(0.95);
-}
-.custom-tooltip:hover .custom-tooltip-content.position-left {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) scale(1);
-}
 .custom-tooltip-content.position-left::after {
   top: 50%;
   left: 100%;
@@ -278,16 +268,6 @@ select.form-control {
 }
 
 /* Top Position */
-.custom-tooltip-content.position-top {
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.95);
-}
-.custom-tooltip:hover .custom-tooltip-content.position-top {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) scale(1);
-}
 .custom-tooltip-content.position-top::after {
   top: 100%;
   left: 50%;
@@ -296,16 +276,6 @@ select.form-control {
 }
 
 /* Bottom Position */
-.custom-tooltip-content.position-bottom {
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.95);
-}
-.custom-tooltip:hover .custom-tooltip-content.position-bottom {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) scale(1);
-}
 .custom-tooltip-content.position-bottom::after {
   bottom: 100%;
   left: 50%;
