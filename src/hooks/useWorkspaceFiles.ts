@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { FileNode } from "@/components/FileTree";
 import type { ToastType } from "@/hooks/useNotifications";
+import { isImageFile } from "@/lib/fileTypes";
 
 export function useWorkspaceFiles(
   showNotification: (message: string, type?: ToastType, duration?: number) => void,
@@ -108,11 +109,19 @@ export function useWorkspaceFiles(
 
     async function loadFileContent() {
       try {
+        // Images are rendered via the raw binary endpoint in CodeViewer.
+        if (isImageFile(activeFile!)) {
+          if (active) setFileContent("");
+          return;
+        }
+
         const res = await fetch(`/api/workspace/file-content?file=${encodeURIComponent(activeFile!)}`);
         const data = await res.json();
         if (active) {
           if (data.error) {
             setFileContent(`Error loading file: ${data.error}`);
+          } else if (data.isBinary) {
+            setFileContent("");
           } else {
             setFileContent(data.content || "");
           }

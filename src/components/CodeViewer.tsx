@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import React from "react";
 import Loader from "@/components/Loader";
+import { isImageFile } from "@/lib/fileTypes";
 
 interface CodeViewerProps {
   filePath: string;
@@ -128,9 +129,19 @@ function parseInline(text: string): React.ReactNode[] {
     return part;
   });
 }
+
+function imageSrcFor(filePath: string): string {
+  return `/api/workspace/file-content?file=${encodeURIComponent(filePath)}&raw=1`;
+}
+
 export default function CodeViewer({ filePath, content, isLoading }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"raw" | "preview">("preview");
+  const [imageError, setImageError] = useState(false);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{ w: number; h: number } | null>(null);
+
+  const isImage = isImageFile(filePath);
+  const isMarkdown = filePath.endsWith(".md") || filePath.endsWith(".markdown");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -141,6 +152,8 @@ export default function CodeViewer({ filePath, content, isLoading }: CodeViewerP
   useEffect(() => {
     const timer = setTimeout(() => {
       setViewMode("preview");
+      setImageError(false);
+      setImageNaturalSize(null);
     }, 0);
     return () => clearTimeout(timer);
   }, [filePath]);
@@ -161,7 +174,6 @@ export default function CodeViewer({ filePath, content, isLoading }: CodeViewerP
   }
 
   const lines = content.split("\n");
-  const isMarkdown = filePath.endsWith(".md") || filePath.endsWith(".markdown");
 
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", height: "100%", border: "none", borderRadius: 0 }}>
@@ -178,9 +190,19 @@ export default function CodeViewer({ filePath, content, isLoading }: CodeViewerP
             <Loader size="xs" className="mx-1" label="Loading file" />
           )}
           <span style={{ color: "var(--color-fg-muted)" }}>|</span>
-          <span style={{ color: "var(--color-fg-muted)" }}>{lines.length} lines</span>
-          <span style={{ color: "var(--color-fg-muted)" }}>|</span>
-          <span style={{ color: "var(--color-fg-muted)" }}>{(new Blob([content]).size / 1024).toFixed(2)} KB</span>
+          {isImage ? (
+            <span style={{ color: "var(--color-fg-muted)" }}>
+              {imageNaturalSize
+                ? `${imageNaturalSize.w} × ${imageNaturalSize.h}`
+                : "Image"}
+            </span>
+          ) : (
+            <>
+              <span style={{ color: "var(--color-fg-muted)" }}>{lines.length} lines</span>
+              <span style={{ color: "var(--color-fg-muted)" }}>|</span>
+              <span style={{ color: "var(--color-fg-muted)" }}>{(new Blob([content]).size / 1024).toFixed(2)} KB</span>
+            </>
+          )}
         </div>
         
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -221,14 +243,51 @@ export default function CodeViewer({ filePath, content, isLoading }: CodeViewerP
             </div>
           )}
 
-          <button className="btn btn-sm" onClick={handleCopy}>
-            {copied ? "Copied!" : "Copy"}
-          </button>
+          {!isImage && (
+            <button className="btn btn-sm" onClick={handleCopy}>
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Code Text Area or Markdown Preview */}
-      {isMarkdown && viewMode === "preview" ? (
+      {isImage ? (
+        <div style={{
+          flex: 1,
+          overflow: "auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          backgroundColor: "var(--color-bg-default)",
+          opacity: isLoading ? 0.6 : 1,
+          transition: "opacity 0.15s ease-in-out",
+        }}>
+          {imageError ? (
+            <div style={{ color: "var(--color-fg-muted)", fontSize: "14px", textAlign: "center" }}>
+              Failed to load image preview.
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={filePath}
+              src={imageSrcFor(filePath)}
+              alt={filePath}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                setImageNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+              }}
+              onError={() => setImageError(true)}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+                imageRendering: "auto",
+              }}
+            />
+          )}
+        </div>
+      ) : isMarkdown && viewMode === "preview" ? (
         <div style={{
           flex: 1,
           overflow: "auto",

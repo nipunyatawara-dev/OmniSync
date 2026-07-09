@@ -152,7 +152,16 @@ export default function Tooltip({ content, position = "top", children }: Tooltip
         )
       : null;
 
-  const child = React.Children.only(children);
+  if (React.Children.count(children) !== 1) {
+    return (
+      <>
+        {children}
+        {portal}
+      </>
+    );
+  }
+
+  const child = React.Children.toArray(children)[0];
 
   if (!React.isValidElement(child)) {
     return (

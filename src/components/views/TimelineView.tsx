@@ -85,6 +85,8 @@ export default function TimelineView({
       className="animate-fade-slide"
       style={{
         flex: 1,
+        minHeight: 0,
+        height: "100%",
         padding: "32px",
         overflowY: "auto",
         backgroundColor: "var(--color-bg-default)",
