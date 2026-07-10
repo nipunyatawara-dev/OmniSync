@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3b
+
+### Added
+- Dashboard terminal with live output from diagnostics, git, and runner ops, plus manual command entry
+- Contribution heatmap on the Timeline view
+- Image previews in CodeViewer (PNG, GIF, JPG, WebP, BMP, ICO, SVG, AVIF)
+- Runner prepare/build step before start (default `npm run build`)
+- Isolated workspace child process env (`buildWorkspaceChildEnv`)
+
+### Fixed
+- PORT env leak into other Next.js apps during development
+- Workspace child env pollution breaking `next dev` / Turbopack
+- Duplicate Electron IPC handler registration on window reopen
+- macOS Dock reopen racing a cold Next.js restart
+- Tooltips clipping outside the viewport
+- Binary/image files being read as UTF-8 text in CodeViewer
+
+### Changed
+- Electron main window lifecycle (`launchMainWindow`, restore/focus existing window)
+- App port reads `NEXT_PUBLIC_OMNISYNC_PORT` only (default `47821`)
+- Viewport-aware tooltip positioning
+
+
 ## 0.2b
 
 ### Security
