@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
-import type { TerminalLine } from "@/lib/dashboardTerminal";
+import React, { useRef, useState } from "react";
+import type { TerminalLine } from "@/lib/dashboardTerminalTypes";
+import { textFromLastCommand } from "@/lib/terminalCopy";
 
 const MIN_VISIBLE = 120;
 
@@ -41,6 +42,7 @@ export default function DashboardTerminal({
   lineColor,
 }: DashboardTerminalProps) {
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [copyLabel, setCopyLabel] = useState("Copy");
 
   const startResize = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -60,6 +62,19 @@ export default function DashboardTerminal({
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+  };
+
+  const copyLastOutput = async () => {
+    const text = textFromLastCommand(lines);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyLabel("Copied");
+      window.setTimeout(() => setCopyLabel("Copy"), 1500);
+    } catch {
+      setCopyLabel("Failed");
+      window.setTimeout(() => setCopyLabel("Copy"), 1500);
+    }
   };
 
   return (
@@ -115,21 +130,34 @@ export default function DashboardTerminal({
           >
             {isCollapsed ? "Show Terminal" : "Hide Terminal"}
           </button>
-          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-fg-muted)" }}>Terminal</span>
           {(isManualRunning || isSubmitting) && (
             <span className="badge badge-warning animate-pulse" style={{ fontSize: "9px", padding: "1px 6px" }}>
               Running
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={onClear}
-          style={{ padding: "2px 8px", fontSize: "11px", height: "24px" }}
-        >
-          Clear
-        </button>
+        {!isCollapsed && (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => void copyLastOutput()}
+              disabled={!textFromLastCommand(lines)}
+              style={{ padding: "2px 8px", fontSize: "11px", height: "24px" }}
+              title="Copy from the last command through the end of the output"
+            >
+              {copyLabel}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={onClear}
+              style={{ padding: "2px 8px", fontSize: "11px", height: "24px" }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       {!isCollapsed && (

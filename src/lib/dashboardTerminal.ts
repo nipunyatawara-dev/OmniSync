@@ -4,14 +4,9 @@ import os from "os";
 import { spawnLoginCommand } from "@/lib/shellEnv";
 import { stripTerminalEscapeSequences } from "@/lib/npmInstall";
 import { buildWorkspaceChildEnv } from "@/lib/workspaceProcessEnv";
+import type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
 
-export type TerminalLineKind = "command" | "output" | "error" | "system";
-
-export interface TerminalLine {
-  id: number;
-  text: string;
-  kind: TerminalLineKind;
-}
+export type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
 
 interface TerminalState {
   lines: TerminalLine[];

@@ -43,24 +43,32 @@ export class GitCommandError extends Error {
   }
 }
 
+function gitAuthArgs(token?: string): string[] {
+  if (!token) return [];
+  // Prefer URL rewrite over Bearer headers — more reliable for HTTPS remotes in
+  // GUI apps (no TTY). Disable credential helpers so keychain cannot override.
+  return [
+    "-c",
+    "credential.helper=",
+    "-c",
+    `url.https://x-access-token:${token}@github.com/.insteadOf=https://github.com/`,
+  ];
+}
+
+function gitChildEnv(): NodeJS.ProcessEnv {
+  return {
+    ...augmentProcessEnv(),
+    // Never prompt for username/password — that yields "Device not configured" in Electron.
+    GIT_TERMINAL_PROMPT: "0",
+  };
+}
+
 function execGit(args: string[], cwd: string, token?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Disable OS credential helpers so stale keychain entries cannot override
-    // the profile OAuth token passed via Authorization header.
-    const gitArgs = token
-      ? [
-          "-c",
-          "credential.helper=",
-          "-c",
-          `http.extraHeader=Authorization: Bearer ${token}`,
-          ...args,
-        ]
-      : args;
-
     execFile(
       "git",
-      gitArgs,
-      { cwd, encoding: "utf-8", timeout: 120000, env: augmentProcessEnv() },
+      [...gitAuthArgs(token), ...args],
+      { cwd, encoding: "utf-8", timeout: 120000, env: gitChildEnv() },
       (error, _stdout, stderr) => {
         if (error) {
           const msg = (stderr || error.message || `git ${args.join(" ")} failed`).trim();

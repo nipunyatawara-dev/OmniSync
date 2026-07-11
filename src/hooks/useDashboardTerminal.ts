@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TerminalLine } from "@/lib/dashboardTerminal";
+import type { TerminalLine } from "@/lib/dashboardTerminalTypes";
 import { terminalLineColor } from "@/lib/parseInstallLogs";
 
 const STORAGE_HEIGHT_KEY = "omnisync_terminal_height";

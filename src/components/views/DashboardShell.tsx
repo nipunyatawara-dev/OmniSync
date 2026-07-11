@@ -9,7 +9,7 @@ import DependencyInstallModal, {
 import type { UserProfile } from "@/lib/profiles";
 import type { DashboardTab } from "@/types/dashboard";
 import type { ToastType } from "@/hooks/useNotifications";
-import type { TerminalLine } from "@/lib/dashboardTerminal";
+import type { TerminalLine } from "@/lib/dashboardTerminalTypes";
 
 interface DashboardTerminalBindings {
   lines: TerminalLine[];
