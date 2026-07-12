@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildWorkspaceChildEnv,
   shouldStripWorkspaceEnvKey,
+  scrubWorkspacePoisonEnv,
   workspaceEnvModeForRunCommand,
 } from "@/lib/workspaceProcessEnv";
 
@@ -10,10 +11,13 @@ describe("workspaceProcessEnv", () => {
     expect(shouldStripWorkspaceEnvKey("OMNISYNC_API_TOKEN")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("NEXT_RUNTIME")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("__NEXT_PRIVATE_ORIGIN")).toBe(true);
+    expect(shouldStripWorkspaceEnvKey("__NEXT_PRIVATE_STANDALONE_CONFIG")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("ELECTRON_RUN_AS_NODE")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("NODE_ENV")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("HOSTNAME")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("TURBO_CACHE_DIR")).toBe(true);
+    expect(shouldStripWorkspaceEnvKey("TURBOPACK")).toBe(true);
+    expect(shouldStripWorkspaceEnvKey("TURBO")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("npm_config_cache")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("NPM_CONFIG_CACHE")).toBe(true);
     expect(shouldStripWorkspaceEnvKey("PATH")).toBe(false);
@@ -26,12 +30,24 @@ describe("workspaceProcessEnv", () => {
     expect(workspaceEnvModeForRunCommand("npm run start")).toBe("production");
   });
 
-  it("builds isolated env with development mode", () => {
+  it("builds isolated env with development mode under OmniSync standalone pollution", () => {
     const prev = process.env.NODE_ENV;
     const prevNext = process.env.NEXT_RUNTIME;
+    const prevPort = process.env.PORT;
+    const prevStandalone = process.env.__NEXT_PRIVATE_STANDALONE_CONFIG;
+    const prevTurbopack = process.env.TURBOPACK;
+
     process.env.NODE_ENV = "production";
+    process.env.PORT = "47821";
+    process.env.HOSTNAME = "127.0.0.1";
     process.env.NEXT_RUNTIME = "nodejs";
     process.env.OMNISYNC_API_TOKEN = "secret";
+    process.env.TURBOPACK = "1";
+    process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify({
+      distDirRoot: ".next",
+      turbopack: { root: "/Applications/OmniSync.app" },
+      outputFileTracingRoot: "/Users/shockagg/Documents/GitHub/OmniSync",
+    });
 
     try {
       const env = buildWorkspaceChildEnv("/tmp/project", {
@@ -43,13 +59,38 @@ describe("workspaceProcessEnv", () => {
       expect(env.PWD).toBe("/tmp/project");
       expect(env.NEXT_RUNTIME).toBeUndefined();
       expect(env.OMNISYNC_API_TOKEN).toBeUndefined();
+      expect(env.TURBOPACK).toBeUndefined();
+      expect(env.__NEXT_PRIVATE_STANDALONE_CONFIG).toBeUndefined();
+      expect(env.HOSTNAME).toBeUndefined();
       expect(env.PATH).toBeTruthy();
     } finally {
       if (prev === undefined) delete process.env.NODE_ENV;
       else process.env.NODE_ENV = prev;
       if (prevNext === undefined) delete process.env.NEXT_RUNTIME;
       else process.env.NEXT_RUNTIME = prevNext;
+      if (prevPort === undefined) delete process.env.PORT;
+      else process.env.PORT = prevPort;
+      if (prevStandalone === undefined) delete process.env.__NEXT_PRIVATE_STANDALONE_CONFIG;
+      else process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = prevStandalone;
+      if (prevTurbopack === undefined) delete process.env.TURBOPACK;
+      else process.env.TURBOPACK = prevTurbopack;
       delete process.env.OMNISYNC_API_TOKEN;
+      delete process.env.HOSTNAME;
     }
+  });
+
+  it("scrubWorkspacePoisonEnv removes standalone config even if copied in", () => {
+    const env = scrubWorkspacePoisonEnv({
+      PATH: "/usr/bin",
+      __NEXT_PRIVATE_STANDALONE_CONFIG: '{"distDirRoot":".next"}',
+      TURBOPACK: "1",
+      NODE_ENV: "production",
+      PORT: "47821",
+    });
+    expect(env.PATH).toBe("/usr/bin");
+    expect(env.__NEXT_PRIVATE_STANDALONE_CONFIG).toBeUndefined();
+    expect(env.TURBOPACK).toBeUndefined();
+    expect(env.NODE_ENV).toBeUndefined();
+    expect(env.PORT).toBeUndefined();
   });
 });

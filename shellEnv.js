@@ -30,6 +30,62 @@ function pathJoin(...parts) {
   return parts.join("/");
 }
 
+/**
+ * Last-line scrub before spawn. shellEnv.js is loaded via createRequire (not
+ * webpack-bundled), so this always sees real runtime keys — including
+ * __NEXT_PRIVATE_STANDALONE_CONFIG that OmniSync's standalone server.js sets.
+ * Intentionally set NODE_ENV / PORT / PWD / INIT_CWD from callers are kept.
+ */
+const WORKSPACE_POISON_EXACT = new Set([
+  "HOSTNAME",
+  "TURBOPACK",
+  "TURBO",
+  "VERCEL",
+  "KEEP_ALIVE_TIMEOUT",
+  "EDITOR",
+  "OLDPWD",
+]);
+
+const WORKSPACE_POISON_PREFIXES = [
+  "OMNISYNC_",
+  "NEXT_",
+  "__NEXT_",
+  "ELECTRON_",
+  "__CF",
+  "__CURSOR",
+  "CURSOR_",
+  "TURBO_",
+  "TURBOPACK_",
+  "VERCEL_",
+  "npm_config_",
+  "NPM_CONFIG_",
+  "npm_package_",
+  "npm_lifecycle_",
+  "npm_node_",
+  "BUN_",
+  "VSCODE_",
+];
+
+function isWorkspacePoisonKey(key) {
+  if (WORKSPACE_POISON_EXACT.has(key) || WORKSPACE_POISON_EXACT.has(key.toLowerCase())) {
+    return true;
+  }
+  const lower = key.toLowerCase();
+  return WORKSPACE_POISON_PREFIXES.some(
+    (prefix) => key.startsWith(prefix) || lower.startsWith(prefix.toLowerCase())
+  );
+}
+
+function scrubSpawnEnv(env) {
+  const out = { ...env };
+  for (const key of Object.keys(out)) {
+    if (isWorkspacePoisonKey(key)) delete out[key];
+  }
+  delete out.npm_config_prefix;
+  delete out.NPM_CONFIG_PREFIX;
+  return out;
+}
+
 function baseSpawnEnv(base = process.env) {
   const env = { ...base, HOME: os.homedir(), USER: os.userInfo().username };
   delete env.npm_config_prefix;
@@ -140,6 +196,24 @@ function shellQuote(value) {
  * Always `cd` into cwd inside the shell so profile scripts cannot leave the
  * process in the wrong directory.
  */
+function resolveSpawnEnv(options = {}) {
+  // Prefer an explicit env object (including empty). Never silently fall back
+  // when the caller passed env — that re-leaked OmniSync PORT/NODE_ENV.
+  const explicit = options.env !== undefined;
+  const base = explicit ? options.env : process.env;
+  const env = scrubSpawnEnv(augmentProcessEnv(base));
+  if (!explicit) {
+    // Raw process.env fallback: drop host Next/Electron process identity.
+    delete env.NODE_ENV;
+    delete env.PORT;
+    delete env.HOSTNAME;
+    delete env.PWD;
+    delete env.INIT_CWD;
+    delete env.OLDPWD;
+  }
+  return env;
+}
+
 function spawnLoginCommand(commandLine, options = {}) {
   const shell = getLoginShell();
   const cwd = options.cwd;
@@ -149,7 +223,7 @@ function spawnLoginCommand(commandLine, options = {}) {
       : commandLine;
   return spawn(shell, ["-ilc", wrapped], {
     cwd: cwd || undefined,
-    env: augmentProcessEnv(options.env || process.env),
+    env: resolveSpawnEnv(options),
   });
 }
 
@@ -163,14 +237,14 @@ function spawnTool(name, args, options = {}) {
     return spawn(cmd, args, {
       cwd: options.cwd,
       shell: true,
-      env: augmentProcessEnv(options.env || process.env),
+      env: resolveSpawnEnv(options),
     });
   }
 
   const resolved = resolveCommand(name);
   return spawn(resolved, args, {
     cwd: options.cwd,
-    env: augmentProcessEnv(options.env || process.env),
+    env: resolveSpawnEnv(options),
   });
 }
 

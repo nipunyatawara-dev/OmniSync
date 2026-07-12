@@ -21,18 +21,30 @@ describe("shellEnv", () => {
   it("does not re-inject stripped keys from process.env into a cleaned base", () => {
     const previousTurbo = process.env.TURBO_CACHE_DIR;
     const previousNext = process.env.NEXT_RUNTIME;
+    const previousTurbopack = process.env.TURBOPACK;
+    const previousStandalone = process.env.__NEXT_PRIVATE_STANDALONE_CONFIG;
     process.env.TURBO_CACHE_DIR = "/tmp/should-not-leak";
     process.env.NEXT_RUNTIME = "nodejs";
+    process.env.TURBOPACK = "1";
+    process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = '{"distDirRoot":".next"}';
     try {
       const env = augmentProcessEnv({ FOO: "bar", PATH: "/usr/bin" });
       expect(env.FOO).toBe("bar");
+      // augmentProcessEnv itself does not scrub (OmniSync server needs OMNISYNC_*);
+      // spawn scrub is tested indirectly — cleaned bases must not pick up parent keys.
       expect(env.TURBO_CACHE_DIR).toBeUndefined();
       expect(env.NEXT_RUNTIME).toBeUndefined();
+      expect(env.TURBOPACK).toBeUndefined();
+      expect(env.__NEXT_PRIVATE_STANDALONE_CONFIG).toBeUndefined();
     } finally {
       if (previousTurbo === undefined) delete process.env.TURBO_CACHE_DIR;
       else process.env.TURBO_CACHE_DIR = previousTurbo;
       if (previousNext === undefined) delete process.env.NEXT_RUNTIME;
       else process.env.NEXT_RUNTIME = previousNext;
+      if (previousTurbopack === undefined) delete process.env.TURBOPACK;
+      else process.env.TURBOPACK = previousTurbopack;
+      if (previousStandalone === undefined) delete process.env.__NEXT_PRIVATE_STANDALONE_CONFIG;
+      else process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = previousStandalone;
     }
   });
 

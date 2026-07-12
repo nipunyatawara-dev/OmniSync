@@ -4,9 +4,22 @@ import os from "os";
 import { spawnLoginCommand } from "@/lib/shellEnv";
 import { stripTerminalEscapeSequences } from "@/lib/npmInstall";
 import { buildWorkspaceChildEnv } from "@/lib/workspaceProcessEnv";
+import type { WorkspaceEnvMode } from "@/lib/workspaceProcessEnv";
 import type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
 
 export type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
+
+/** NODE_ENV for free-form terminal: only set when the command clearly needs it. */
+export function terminalEnvModeForCommand(command: string): WorkspaceEnvMode {
+  const cmd = command.toLowerCase();
+  if ((/\bdev\b/.test(cmd) || cmd.includes("next dev")) && !/\bstart\b/.test(cmd)) {
+    return "development";
+  }
+  if (/\bstart\b/.test(cmd) || cmd.includes("next start") || cmd.includes("run preview")) {
+    return "production";
+  }
+  return "inherit";
+}
 
 interface TerminalState {
   lines: TerminalLine[];
@@ -106,7 +119,9 @@ export async function runManualTerminalCommand(cwd: string, command: string): Pr
   return new Promise((resolve) => {
     const child = spawnLoginCommand(trimmed, {
       cwd,
-      env: buildWorkspaceChildEnv(cwd, { mode: "inherit" }),
+      env: buildWorkspaceChildEnv(cwd, {
+        mode: terminalEnvModeForCommand(trimmed),
+      }),
     });
 
     state.manualProcess = child;
