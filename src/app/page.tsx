@@ -170,7 +170,24 @@ export default function DashboardPage() {
     if (activeTab === "git") {
       workspace.setGitChangesRefreshKey((key) => key + 1);
     }
+    if (activeTab === "workspace") {
+      workspace.loadWorkspaceFiles();
+    }
   }, [activeTab]);
+
+  const refreshAfterGitSync = (action: "fetch" | "pull" | "push") => {
+    timeline.loadAllCommits();
+    if (action === "pull") {
+      workspace.loadWorkspaceFiles();
+      workspace.setGitChangesRefreshKey((key) => key + 1);
+    }
+  };
+
+  const refreshAfterPullStrategy = () => {
+    timeline.loadAllCommits();
+    workspace.loadWorkspaceFiles();
+    workspace.setGitChangesRefreshKey((key) => key + 1);
+  };
 
   const handleDismissTourButton = () => {
     setShowGuideTourButton(false);
@@ -245,6 +262,7 @@ export default function DashboardPage() {
           onSelectFile={workspace.handleSelectFile}
           onCloseFile={workspace.handleCloseFile}
           onExpandDirectory={workspace.loadDirectoryChildren}
+          onRefreshFiles={workspace.loadWorkspaceFiles}
           onClearConflictSelection={() => setSelectedConflictFile(null)}
           startResizeLeft={workspace.startResizeLeft}
           startResizeRight={workspace.startResizeRight}
@@ -265,12 +283,14 @@ export default function DashboardPage() {
           conflictFiles={conflictFiles}
           selectedConflictFile={selectedConflictFile}
           onSelectConflictFile={setSelectedConflictFile}
-          onGitSync={(action) => handleGitSync(action, timeline.loadAllCommits)}
-          onPullStrategy={(strategy) => handlePullStrategy(strategy, timeline.loadAllCommits)}
+          onGitSync={(action) => handleGitSync(action, () => refreshAfterGitSync(action))}
+          onPullStrategy={(strategy) => handlePullStrategy(strategy, refreshAfterPullStrategy)}
           onRefresh={() => {
             loadGitSyncStatus();
             timeline.loadAllCommits();
             loadConflictFiles();
+            workspace.loadWorkspaceFiles();
+            workspace.setGitChangesRefreshKey((key) => key + 1);
           }}
           onConflictResolved={() => {
             setSelectedConflictFile(null);

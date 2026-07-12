@@ -34,6 +34,7 @@ interface WorkspaceViewProps {
   onSelectFile: (file: string) => void;
   onCloseFile: (file: string, e: React.MouseEvent) => void;
   onExpandDirectory?: (relativePath: string) => Promise<void> | void;
+  onRefreshFiles?: () => void;
   onClearConflictSelection: () => void;
   startResizeLeft: (e: React.MouseEvent) => void;
   startResizeRight: (e: React.MouseEvent) => void;
@@ -65,6 +66,7 @@ export default function WorkspaceView({
   onSelectFile,
   onCloseFile,
   onExpandDirectory,
+  onRefreshFiles,
   onClearConflictSelection,
   startResizeLeft,
   startResizeRight,
@@ -322,8 +324,46 @@ export default function WorkspaceView({
             height: "100%",
             minHeight: 0,
           }}>
-          <div style={{ padding: "12px 16px 4px 16px", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", color: "var(--color-fg-muted)" }}>
-            Workspace Files
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "12px 16px 4px 16px",
+            fontSize: "11px",
+            fontWeight: "600",
+            textTransform: "uppercase",
+            color: "var(--color-fg-muted)",
+          }}>
+            <span>Workspace Files</span>
+            {onRefreshFiles && (
+              <Tooltip content="Refresh file tree" position="bottom">
+                <button
+                  type="button"
+                  onClick={onRefreshFiles}
+                  aria-label="Refresh file tree"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--color-fg-muted)",
+                    cursor: "pointer",
+                    padding: "2px 4px",
+                    fontSize: "14px",
+                    lineHeight: 1,
+                    borderRadius: "4px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--color-fg-default)";
+                    e.currentTarget.style.backgroundColor = "var(--color-bg-muted)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--color-fg-muted)";
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  ↻
+                </button>
+              </Tooltip>
+            )}
           </div>
           <FileTree
             tree={fileTree}
