@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import ConflictResolver from "@/components/ConflictResolver";
 import GitChangesPanel from "@/components/GitChangesPanel";
+import BranchFilterMultiSelect from "@/components/BranchFilterMultiSelect";
+import BranchMergePanel from "@/components/BranchMergePanel";
+import CollaborationFeed from "@/components/CollaborationFeed";
 import type { SyncStatus } from "@/hooks/useGitSync";
+import { useCollaborationFeed } from "@/hooks/useCollaborationFeed";
 import type { UserProfile } from "@/lib/profiles";
 
 interface GitSyncViewProps {
@@ -22,6 +27,8 @@ interface GitSyncViewProps {
   onPullStrategy: (strategy: "pull-merge" | "pull-rebase") => void;
   onRefresh: () => void;
   onConflictResolved: () => void;
+  showNotification: (msg: string, type?: "info" | "success" | "error", duration?: number) => void;
+  feedRefreshKey?: number;
 }
 
 export default function GitSyncView({
@@ -41,7 +48,16 @@ export default function GitSyncView({
   onPullStrategy,
   onRefresh,
   onConflictResolved,
+  showNotification,
+  feedRefreshKey = 0,
 }: GitSyncViewProps) {
+  const feed = useCollaborationFeed(branches);
+
+  useEffect(() => {
+    if (feedRefreshKey > 0) feed.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedRefreshKey]);
+
   return (
     <div className="animate-fade-slide" style={{ display: "flex", height: "100%", overflow: "hidden" }}>
       <div
@@ -369,50 +385,72 @@ export default function GitSyncView({
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: "hidden", backgroundColor: "var(--color-bg-default)" }}>
+      <div
+        style={{
+          flex: 1,
+          overflow: "hidden",
+          backgroundColor: "var(--color-bg-default)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {selectedConflictFile ? (
           <ConflictResolver
             relativeFile={selectedConflictFile}
             onResolved={onConflictResolved}
           />
         ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              padding: "48px 24px",
-              textAlign: "center",
-              maxWidth: "600px",
-              margin: "0 auto",
-              gap: "24px",
-            }}
-          >
-            <h2 style={{ fontSize: "20px", fontWeight: "700", margin: 0 }}>Git Collaboration Workspace</h2>
-            <p style={{ fontSize: "13px", color: "var(--color-fg-muted)", lineHeight: "20px" }}>
-              Manage branch sync and resolve merge conflicts. Select a conflict file from the sidebar to open the
-              resolver.
-            </p>
-            <div className="card" style={{ width: "100%", padding: "16px 20px", textAlign: "left" }}>
-              <div style={{ fontSize: "11px", color: "var(--color-fg-muted)" }}>Workspace</div>
-              <div
-                style={{
-                  fontWeight: 600,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {activeProfile?.workspacePath || "No path linked"}
+          <>
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--color-border-default)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+                flexShrink: 0,
+                backgroundColor: "var(--color-bg-subtle)",
+              }}
+            >
+              <div>
+                <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "0 0 4px" }}>
+                  Collaboration
+                </h2>
+                <p style={{ fontSize: "12px", color: "var(--color-fg-muted)", margin: 0 }}>
+                  Commit activity across selected branches
+                  {activeProfile?.workspacePath
+                    ? ` · ${activeProfile.workspacePath.split("/").pop()}`
+                    : ""}
+                  {currentBranch ? ` · on ${currentBranch}` : ""}
+                </p>
               </div>
-              <div style={{ fontSize: "11px", color: "var(--color-fg-muted)", marginTop: "12px" }}>Branch</div>
-              <div style={{ fontWeight: 600 }}>{currentBranch}</div>
+              <BranchFilterMultiSelect
+                branches={branches}
+                selected={feed.selectedBranches}
+                onChange={feed.setSelectedBranches}
+              />
+              <BranchMergePanel
+                branches={branches}
+                currentBranch={currentBranch}
+                branchProtected={branchProtected}
+                showNotification={showNotification}
+                onConflictSelect={(file) => onSelectConflictFile(file)}
+                onMerged={() => {
+                  onRefresh();
+                  feed.reload();
+                }}
+              />
             </div>
-          </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <CollaborationFeed
+                commits={feed.commits}
+                isLoading={feed.isLoading}
+                sessionAvatarUrl={feed.sessionAvatarUrl}
+                sessionEmail={feed.sessionEmail || activeProfile?.email}
+                sessionLogin={feed.sessionLogin}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

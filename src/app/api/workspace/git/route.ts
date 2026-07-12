@@ -11,6 +11,8 @@ import {
   getConflictFiles,
   parseConflictFile,
   getAllRepoCommits,
+  previewMerge,
+  mergeBranches,
   applyGitIdentity,
   gitFetch,
   gitPull,
@@ -123,7 +125,18 @@ export async function GET(request: Request) {
 
   try {
     if (action === "all-commits") {
-      const commits = await getAllRepoCommits(cwd);
+      const branchesParam = searchParams.get("branches");
+      let branchFilter: string[] | undefined;
+      if (branchesParam && branchesParam !== "*") {
+        branchFilter = branchesParam
+          .split(",")
+          .map((b) => b.trim())
+          .filter(Boolean);
+        if (branchFilter.length === 0) {
+          return NextResponse.json({ commits: [] });
+        }
+      }
+      const commits = await getAllRepoCommits(cwd, branchFilter);
       return NextResponse.json({ commits });
     }
 
@@ -363,6 +376,47 @@ export async function POST(request: Request) {
         success: true,
         current,
         branchProtected: isDirectCommitBlocked(profile, current),
+      });
+    }
+
+    if (action === "merge-preview") {
+      const source = typeof body.source === "string" ? body.source : "";
+      const target = typeof body.target === "string" ? body.target : "";
+      logGitTerminalCommand(cwd, `git merge-tree (preview) ${source} → ${target}`);
+      const preview = await previewMerge(cwd, source, target);
+      logGitTerminalResult(
+        preview.clean
+          ? "Merge preview: no conflicts."
+          : `Merge preview: ${preview.conflicts.length} conflict file(s).`
+      );
+      return NextResponse.json(preview);
+    }
+
+    if (action === "merge-branches") {
+      const source = typeof body.source === "string" ? body.source : "";
+      const target = typeof body.target === "string" ? body.target : "";
+      if (isDirectCommitBlocked(profile, target)) {
+        return NextResponse.json(
+          { error: "Merging into a protected branch is disabled by branch protection." },
+          { status: 403 }
+        );
+      }
+      logGitTerminalCommand(cwd, `git merge ${source} → ${target}`);
+      const result = await mergeBranches(cwd, source, target);
+      if (result.status === "ok") {
+        logGitTerminalResult(`Merged '${source}' into '${target}'.`);
+      } else if (result.status === "conflicts") {
+        logGitTerminalResult(result.message || "Merge conflicts detected.", true);
+      } else {
+        logGitTerminalResult(result.message || "Merge failed.", true);
+      }
+      const sync = await getSyncStatus(cwd, global.defaultBranch);
+      const mergeState = await getMergeState(cwd);
+      return NextResponse.json({
+        ...result,
+        sync,
+        mergeState,
+        branchProtected: isDirectCommitBlocked(profile, result.currentBranch),
       });
     }
 

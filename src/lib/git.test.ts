@@ -43,6 +43,15 @@ describe("parseGitPorcelainLine", () => {
   });
 });
 
+describe("parseDecorateBranches", () => {
+  it("extracts local branch names and skips remotes/tags", async () => {
+    const { parseDecorateBranches } = await import("@/lib/git");
+    expect(parseDecorateBranches("HEAD -> main, origin/main, tag: v1")).toEqual(["main"]);
+    expect(parseDecorateBranches("feature/foo, origin/feature/foo")).toEqual(["feature/foo"]);
+    expect(parseDecorateBranches("")).toEqual([]);
+  });
+});
+
 describe("parseConflictFile", () => {
   it("parses conflict markers into blocks", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "omnisync-conflict-"));

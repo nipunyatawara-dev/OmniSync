@@ -285,8 +285,10 @@ export default function DashboardPage() {
           onSelectConflictFile={setSelectedConflictFile}
           onGitSync={(action) => handleGitSync(action, () => refreshAfterGitSync(action))}
           onPullStrategy={(strategy) => handlePullStrategy(strategy, refreshAfterPullStrategy)}
+          showNotification={showNotification}
           onRefresh={() => {
             loadGitSyncStatus();
+            loadGitBranches();
             timeline.loadAllCommits();
             loadConflictFiles();
             workspace.loadWorkspaceFiles();

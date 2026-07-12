@@ -505,28 +505,304 @@ export async function parseConflictFile(filePath: string): Promise<{
 export interface RepoCommit {
   hash: string;
   author: string;
+  email: string;
   date: string;
+  authoredAt: string;
   subject: string;
   isMerge: boolean;
+  branches: string[];
 }
 
-export async function getAllRepoCommits(cwd: string): Promise<RepoCommit[]> {
+export interface MergePreviewResult {
+  clean: boolean;
+  conflicts: string[];
+  message?: string;
+}
+
+export interface MergeBranchesResult {
+  status: "ok" | "conflicts" | "error";
+  conflicts: string[];
+  currentBranch: string;
+  message?: string;
+}
+
+/** Extract local branch names from git log %D decorate string. */
+export function parseDecorateBranches(decorate: string): string[] {
+  if (!decorate.trim()) return [];
+  const names = new Set<string>();
+  for (const raw of decorate.split(",")) {
+    let part = raw.trim();
+    if (!part || part.startsWith("tag:")) continue;
+    if (part.startsWith("HEAD -> ")) part = part.slice("HEAD -> ".length).trim();
+    if (part.startsWith("refs/heads/")) part = part.slice("refs/heads/".length);
+    // Skip remotes
+    if (part.startsWith("origin/") || part.startsWith("refs/remotes/")) continue;
+    if (part.includes("/")) {
+      // likely remote-tracking unless it's a local branch with slash (feature/foo)
+      // Keep paths that don't start with a known remote prefix — already filtered origin/
+    }
+    if (part && part !== "HEAD") names.add(part);
+  }
+  return [...names];
+}
+
+function parseRepoCommitLine(line: string): RepoCommit | null {
+  if (!line.trim()) return null;
+  // hash|author|email|date|authoredAt|subject|decorate|parents
+  // subject may contain | — take fixed head/tail fields
+  const parts = line.split("|");
+  if (parts.length < 8) {
+    // Backward-compatible: older 5-field format without email
+    if (parts.length >= 5) {
+      const hash = parts[0] || "";
+      const author = parts[1] || "";
+      const date = parts[2] || "";
+      const subject = parts.slice(3, -1).join("|") || "";
+      const parents = parts[parts.length - 1] || "";
+      return {
+        hash,
+        author,
+        email: "",
+        date,
+        authoredAt: date,
+        subject,
+        isMerge: parents.trim().split(/\s+/).filter(Boolean).length > 1,
+        branches: [],
+      };
+    }
+    return null;
+  }
+  const hash = parts[0] || "";
+  const author = parts[1] || "";
+  const email = parts[2] || "";
+  const date = parts[3] || "";
+  const authoredAt = parts[4] || date;
+  const parents = parts[parts.length - 1] || "";
+  const decorate = parts[parts.length - 2] || "";
+  const subject = parts.slice(5, -2).join("|") || "";
+  return {
+    hash,
+    author,
+    email,
+    date,
+    authoredAt,
+    subject,
+    isMerge: parents.trim().split(/\s+/).filter(Boolean).length > 1,
+    branches: parseDecorateBranches(decorate),
+  };
+}
+
+/**
+ * Repo-wide commit log. Pass branch names to limit history; omit / empty = all local branches.
+ */
+export async function getAllRepoCommits(
+  cwd: string,
+  branches?: string[]
+): Promise<RepoCommit[]> {
+  const refs =
+    branches && branches.length > 0
+      ? branches
+      : await getBranches(cwd);
+
+  if (refs.length === 0) return [];
+
   const output = await runGit(
-    ["log", "--all", "--pretty=format:%H|%an|%ad|%s|%P", "--date=format:%Y-%m-%d"],
+    [
+      "log",
+      ...refs,
+      "--pretty=format:%H|%an|%ae|%ad|%aI|%s|%D|%P",
+      "--date=format:%Y-%m-%d",
+    ],
     cwd,
     { maxBuffer: 8 * 1024 * 1024 }
   );
   if (!output) return [];
 
-  return output.split("\n").map((line) => {
-    const parts = line.split("|");
-    const hash = parts[0] || "";
-    const author = parts[1] || "";
-    const date = parts[2] || "";
-    const subject = parts[3] || "";
-    const parents = parts[4] || "";
-    const isMerge = parents.trim().split(/\s+/).length > 1;
-    return { hash, author, date, subject, isMerge };
-  });
+  const seen = new Set<string>();
+  const commits: RepoCommit[] = [];
+  for (const line of output.split("\n")) {
+    const commit = parseRepoCommitLine(line);
+    if (!commit || seen.has(commit.hash)) continue;
+    seen.add(commit.hash);
+    commits.push(commit);
+  }
+  return commits;
+}
+
+async function assertCleanWorktree(cwd: string): Promise<void> {
+  const status = await runGit(["status", "--porcelain=v1"], cwd);
+  if (status.trim()) {
+    throw new GitCommandError(
+      "Working tree has uncommitted changes. Commit or stash them before merging branches."
+    );
+  }
+}
+
+/**
+ * Read-only merge conflict preview (does not leave the repo mid-merge).
+ */
+export async function previewMerge(
+  cwd: string,
+  source: string,
+  target: string
+): Promise<MergePreviewResult> {
+  if (!source || !target) {
+    return { clean: false, conflicts: [], message: "Source and target branches are required." };
+  }
+  if (source === target) {
+    return { clean: false, conflicts: [], message: "Choose two different branches." };
+  }
+
+  const branches = await getBranches(cwd);
+  if (!branches.includes(source) || !branches.includes(target)) {
+    return { clean: false, conflicts: [], message: "Unknown branch selected." };
+  }
+
+  try {
+    // Modern merge-tree: exit 0 clean, exit 1 conflicts; --name-only lists conflict paths.
+    const output = await new Promise<string>((resolve, reject) => {
+      execFile(
+        "git",
+        ["merge-tree", "--write-tree", "--name-only", target, source],
+        { cwd, encoding: "utf-8", timeout: 30000, maxBuffer: 4 * 1024 * 1024, env: augmentProcessEnv() },
+        (error, stdout, stderr) => {
+          const text = `${stdout || ""}\n${stderr || ""}`.trim();
+          if (error) {
+            const code = typeof error === "object" && error && "code" in error ? (error as { code?: number }).code : undefined;
+            if (code === 1) {
+              resolve(text);
+              return;
+            }
+            reject(new GitCommandError((stderr || error.message || "merge-tree failed").trim(), stderr?.trim() || ""));
+            return;
+          }
+          resolve(text);
+        }
+      );
+    });
+
+    // On success, first line is the result tree OID; remaining lines (if any) are conflict paths.
+    const lines = output
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .filter((l) => !/^[0-9a-f]{40,}$/i.test(l));
+
+    const conflicts = [...new Set(lines)];
+    if (conflicts.length === 0) {
+      return { clean: true, conflicts: [] };
+    }
+    return { clean: false, conflicts };
+  } catch (err) {
+    // Fallback: classic merge-tree via merge-base
+    try {
+      const base = await runGit(["merge-base", target, source], cwd);
+      const treeOut = await runGit(["merge-tree", base, target, source], cwd, {
+        maxBuffer: 4 * 1024 * 1024,
+      });
+      const conflictFiles = new Set<string>();
+      let currentFile = "";
+      for (const line of treeOut.split("\n")) {
+        const changed = line.match(/^changed in both\s+(.+)$/i);
+        if (changed) {
+          currentFile = changed[1].trim();
+          continue;
+        }
+        const merged = line.match(/^merged\s+(.+)$/i);
+        if (merged) {
+          currentFile = merged[1].trim();
+          continue;
+        }
+        if (
+          currentFile &&
+          (line.startsWith("<<<<<<<") || line.includes("conflict"))
+        ) {
+          conflictFiles.add(currentFile);
+        }
+      }
+      // Also detect conflict markers anywhere
+      if (treeOut.includes("<<<<<<<")) {
+        const markerFiles = treeOut.match(/(?:^|\n)(?:changed in both|merged)\s+(.+)/gi) || [];
+        for (const m of markerFiles) {
+          const name = m.replace(/^(?:changed in both|merged)\s+/i, "").trim();
+          if (name) conflictFiles.add(name);
+        }
+      }
+      const conflicts = [...conflictFiles];
+      return {
+        clean: conflicts.length === 0 && !treeOut.includes("<<<<<<<"),
+        conflicts,
+      };
+    } catch (fallbackErr) {
+      const msg =
+        fallbackErr instanceof Error
+          ? fallbackErr.message
+          : err instanceof Error
+            ? err.message
+            : "Could not preview merge";
+      return { clean: false, conflicts: [], message: msg };
+    }
+  }
+}
+
+/**
+ * Checkout target and merge source into it.
+ */
+export async function mergeBranches(
+  cwd: string,
+  source: string,
+  target: string
+): Promise<MergeBranchesResult> {
+  if (!source || !target || source === target) {
+    return {
+      status: "error",
+      conflicts: [],
+      currentBranch: await getCurrentBranch(cwd),
+      message: "Choose two different branches to merge.",
+    };
+  }
+
+  const branches = await getBranches(cwd);
+  if (!branches.includes(source) || !branches.includes(target)) {
+    return {
+      status: "error",
+      conflicts: [],
+      currentBranch: await getCurrentBranch(cwd),
+      message: "Unknown branch selected.",
+    };
+  }
+
+  await assertCleanWorktree(cwd);
+
+  const current = await getCurrentBranch(cwd);
+  if (current !== target) {
+    await execGit(["checkout", target], cwd);
+  }
+
+  try {
+    await execGit(["merge", "--no-edit", source], cwd);
+    return {
+      status: "ok",
+      conflicts: [],
+      currentBranch: await getCurrentBranch(cwd),
+    };
+  } catch (err) {
+    const conflicts = await getConflictFiles(cwd);
+    if (conflicts.length > 0) {
+      return {
+        status: "conflicts",
+        conflicts,
+        currentBranch: await getCurrentBranch(cwd),
+        message: "Merge has conflicts. Resolve them, then complete the merge.",
+      };
+    }
+    const message = err instanceof Error ? err.message : "Merge failed";
+    return {
+      status: "error",
+      conflicts: [],
+      currentBranch: await getCurrentBranch(cwd),
+      message,
+    };
+  }
 }
 

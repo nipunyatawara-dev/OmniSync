@@ -1,9 +1,12 @@
 export interface RepoCommit {
   hash: string;
   author: string;
+  email?: string;
   date: string;
+  authoredAt?: string;
   subject: string;
   isMerge: boolean;
+  branches?: string[];
 }
 
 export interface DiagnosticDetails {
