@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter as useAppRouter } from "next/navigation";
 import { UserProfile } from "@/lib/profiles";
+import Loader from "@/components/Loader";
 import GitHubConnectModal from "@/components/GitHubConnectModal";
 import GitHubConnectedBadge from "@/components/GitHubConnectedBadge";
 import SystemPermissionsPrompt from "@/components/SystemPermissionsPrompt";
@@ -22,6 +23,7 @@ export default function SetupPage() {
   const router = useAppRouter();
 
   const [step, setStep] = useState<"login" | "profile-selection" | "repo-selection">("login");
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   const [gitUsername, setGitUsername] = useState("");
   const [gitToken, setGitToken] = useState("");
@@ -349,7 +351,10 @@ export default function SetupPage() {
       if (profiles.length > 0 || data.githubConnected || isLocalOnlyMode()) {
         setStep("profile-selection");
       }
-    } catch {}
+    } catch {
+    } finally {
+      setIsBootstrapping(false);
+    }
   };
 
   useEffect(() => {
@@ -534,6 +539,17 @@ export default function SetupPage() {
     setCloneLogs([]);
     setManualScanResult(null);
   };
+
+  if (isBootstrapping) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: "var(--color-bg-default)", gap: "16px" }}>
+        <Loader size="lg" label="Loading workspace launcher" />
+        <div className="animate-pulse" style={{ color: "var(--color-fg-muted)", fontSize: "14px", fontWeight: "500", letterSpacing: "-0.2px" }}>
+          Loading Workspace Launcher...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden bg-surface text-on-surface">
