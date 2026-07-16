@@ -670,8 +670,45 @@ function parseRepoCommitLine(line: string): RepoCommit | null {
 }
 
 /**
+ * Map each commit hash to every short branch name whose history contains it.
+ * Built via `git rev-list` per branch (much cheaper than --contains per commit).
+ */
+export async function buildBranchContainmentMap(
+  cwd: string,
+  branchRefs: { name: string; ref: string }[]
+): Promise<Map<string, string[]>> {
+  const sets = new Map<string, Set<string>>();
+
+  await Promise.all(
+    branchRefs.map(async ({ name, ref }) => {
+      const output = await runGit(["rev-list", ref], cwd, {
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      if (!output) return;
+      for (const line of output.split("\n")) {
+        const hash = line.trim();
+        if (!hash) continue;
+        let set = sets.get(hash);
+        if (!set) {
+          set = new Set();
+          sets.set(hash, set);
+        }
+        set.add(name);
+      }
+    })
+  );
+
+  const map = new Map<string, string[]>();
+  for (const [hash, set] of sets) {
+    map.set(hash, [...set].sort((a, b) => a.localeCompare(b)));
+  }
+  return map;
+}
+
+/**
  * Repo-wide commit log. Pass branch names to limit history; omit / empty = all branches
  * (local + remote-tracking, resolved to usable refs).
+ * Each commit is tagged with every selected branch that contains it.
  */
 export async function getAllRepoCommits(
   cwd: string,
@@ -682,24 +719,28 @@ export async function getAllRepoCommits(
       ? branches
       : await getBranches(cwd);
 
-  const refs: string[] = [];
+  const branchRefs: { name: string; ref: string }[] = [];
   for (const name of names) {
     const ref = await resolveBranchRef(cwd, name);
-    if (ref) refs.push(ref);
+    if (ref) branchRefs.push({ name, ref });
   }
 
-  if (refs.length === 0) return [];
+  if (branchRefs.length === 0) return [];
 
-  const output = await runGit(
-    [
-      "log",
-      ...refs,
-      "--pretty=format:%H|%an|%ae|%ad|%aI|%s|%D|%P",
-      "--date=format:%Y-%m-%d",
-    ],
-    cwd,
-    { maxBuffer: 8 * 1024 * 1024 }
-  );
+  const refs = branchRefs.map((b) => b.ref);
+  const [output, containment] = await Promise.all([
+    runGit(
+      [
+        "log",
+        ...refs,
+        "--pretty=format:%H|%an|%ae|%ad|%aI|%s|%D|%P",
+        "--date=format:%Y-%m-%d",
+      ],
+      cwd,
+      { maxBuffer: 8 * 1024 * 1024 }
+    ),
+    buildBranchContainmentMap(cwd, branchRefs),
+  ]);
   if (!output) return [];
 
   const seen = new Set<string>();
@@ -708,6 +749,7 @@ export async function getAllRepoCommits(
     const commit = parseRepoCommitLine(line);
     if (!commit || seen.has(commit.hash)) continue;
     seen.add(commit.hash);
+    commit.branches = containment.get(commit.hash) || [];
     commits.push(commit);
   }
   return commits;

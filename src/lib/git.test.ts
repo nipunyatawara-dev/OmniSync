@@ -10,6 +10,7 @@ import {
   getCurrentBranch,
   resolveBranchRef,
   shortNameFromRemoteRef,
+  getAllRepoCommits,
 } from "@/lib/git";
 import type { UserProfile } from "@/lib/profiles";
 import { promises as fs } from "fs";
@@ -119,6 +120,41 @@ describe("getBranches includes remote-only branches", () => {
       await checkoutBranch(clone, "dev");
       expect(await getCurrentBranch(clone)).toBe("dev");
       expect((await getLocalBranches(clone)).sort()).toEqual(["dev", "main"]);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("getAllRepoCommits branch containment tags", () => {
+  it("tags every commit with all branches that contain it", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "omnisync-contains-"));
+
+    try {
+      await git(root, ["init"]);
+      await git(root, ["config", "user.email", "test@example.com"]);
+      await git(root, ["config", "user.name", "Test"]);
+      await git(root, ["checkout", "-b", "main"]);
+      await fs.writeFile(path.join(root, "README.md"), "main\n", "utf-8");
+      await git(root, ["add", "."]);
+      await git(root, ["commit", "-m", "base on main"]);
+
+      await git(root, ["checkout", "-b", "dev"]);
+      await fs.writeFile(path.join(root, "dev.txt"), "dev\n", "utf-8");
+      await git(root, ["add", "."]);
+      await git(root, ["commit", "-m", "only on dev"]);
+
+      await git(root, ["checkout", "main"]);
+      await fs.writeFile(path.join(root, "main.txt"), "main only\n", "utf-8");
+      await git(root, ["add", "."]);
+      await git(root, ["commit", "-m", "only on main"]);
+
+      const commits = await getAllRepoCommits(root, ["dev", "main"]);
+      const bySubject = Object.fromEntries(commits.map((c) => [c.subject, c.branches]));
+
+      expect(bySubject["only on dev"]).toEqual(["dev"]);
+      expect(bySubject["only on main"]).toEqual(["main"]);
+      expect(bySubject["base on main"]).toEqual(["dev", "main"]);
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
