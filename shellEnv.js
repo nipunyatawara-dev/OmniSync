@@ -27,7 +27,20 @@ function stripTerminalEscapeSequences(str) {
 }
 
 function pathJoin(...parts) {
-  return parts.join("/");
+  const sep = process.platform === "win32" ? "\\" : "/";
+  return parts
+    .filter((part) => part !== undefined && part !== null && String(part).length > 0)
+    .map((part, index) => {
+      const value = String(part);
+      if (index === 0) return value.replace(/[\\/]+$/, "");
+      return value.replace(/^[\\/]+/, "").replace(/[\\/]+$/, "");
+    })
+    .filter(Boolean)
+    .join(sep);
+}
+
+function pathDelimiter() {
+  return process.platform === "win32" ? ";" : ":";
 }
 
 /**
@@ -143,9 +156,10 @@ function getOmniSyncToolsBin() {
 function augmentProcessEnv(base = process.env) {
   const loginPath = getLoginShellPath();
   const toolsBin = getOmniSyncToolsBin();
+  const delim = pathDelimiter();
   return {
     ...baseSpawnEnv(base),
-    PATH: toolsBin ? `${toolsBin}:${loginPath}` : loginPath,
+    PATH: toolsBin ? `${toolsBin}${delim}${loginPath}` : loginPath,
   };
 }
 
@@ -230,10 +244,23 @@ function spawnLoginCommand(commandLine, options = {}) {
  */
 function spawnTool(name, args, options = {}) {
   if (process.platform === "win32") {
+    // git/node/gh are .exe — spawn without a shell so URLs/tokens in args are not mangled.
+    // npm/npx/yarn/pnpm are usually .cmd shims and need shell:true on Windows.
+    const isExeTool = name === "git" || name === "node" || name === "gh";
+    if (isExeTool) {
+      return spawn(name, args, {
+        cwd: options.cwd,
+        shell: false,
+        windowsHide: true,
+        env: resolveSpawnEnv(options),
+      });
+    }
+
     const cmd = name.endsWith(".cmd") ? name : `${name}.cmd`;
     return spawn(cmd, args, {
       cwd: options.cwd,
       shell: true,
+      windowsHide: true,
       env: resolveSpawnEnv(options),
     });
   }

@@ -78,7 +78,17 @@ export async function POST(request: Request) {
         };
 
         const sendSuccess = () => {
-          controller.enqueue(encoder.encode(JSON.stringify({ type: "success" }) + "\n"));
+          controller.enqueue(
+            encoder.encode(JSON.stringify({ type: "success", path: safeLocalPath }) + "\n")
+          );
+          controller.close();
+        };
+
+        let settled = false;
+        const fail = (message: string) => {
+          if (settled) return;
+          settled = true;
+          sendError(message);
           controller.close();
         };
 
@@ -105,10 +115,14 @@ export async function POST(request: Request) {
           });
         });
 
+        gitProcess.on("error", (err) => {
+          fail(`Failed to start git: ${err.message}`);
+        });
+
         gitProcess.on("close", async (code) => {
+          if (settled) return;
           if (code !== 0) {
-            sendError(`git clone failed with exit code ${code}`);
-            controller.close();
+            fail(`git clone failed with exit code ${code}`);
             return;
           }
 
@@ -120,7 +134,18 @@ export async function POST(request: Request) {
             cwd: safeLocalPath,
           });
 
+          scrubProcess.on("error", (err) => {
+            sendLog(`[Warning] Failed to reset remote URL: ${err.message}`);
+            if (!settled) {
+              settled = true;
+              sendLog("> Setup complete.");
+              sendSuccess();
+            }
+          });
+
           scrubProcess.on("close", (scrubCode) => {
+            if (settled) return;
+            settled = true;
             if (scrubCode !== 0) {
               sendLog(
                 `[Warning] Failed to reset remote URL, token might still be cached: code ${scrubCode}`

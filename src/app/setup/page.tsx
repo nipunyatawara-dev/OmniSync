@@ -18,6 +18,8 @@ import {
   markLocalOnlyMode,
   markWorkspaceReady,
 } from "@/lib/launchSession";
+import { consumeCloneStream } from "@/lib/cloneStream";
+import { joinWorkspacePath, parentWorkspacePath } from "@/lib/workspacePathJoin";
 
 export default function SetupPage() {
   const router = useAppRouter();
@@ -98,7 +100,7 @@ export default function SetupPage() {
       .then((data) => {
         if (data.defaultCloneParent) {
           setDefaultCloneParent(data.defaultCloneParent);
-          setPathPlaceholder(`${data.defaultCloneParent}/project`);
+          setPathPlaceholder(joinWorkspacePath(data.defaultCloneParent, "project"));
         }
       })
       .catch(() => {});
@@ -136,7 +138,7 @@ export default function SetupPage() {
                 const firstRepo = data.repos[0];
                 setSelectedRepoId(firstRepo.id.toString());
                 if (cloneParent) {
-                  setClonePath(`${cloneParent}/${firstRepo.name}`);
+                  setClonePath(joinWorkspacePath(cloneParent, firstRepo.name));
                 }
               }
             } else {
@@ -164,12 +166,10 @@ export default function SetupPage() {
     setCloneStatus("idle");
     const repo = reposList.find((r) => r.id.toString() === repoId);
     if (repo) {
-      const parentFromPath = clonePath.includes("/")
-        ? clonePath.substring(0, clonePath.lastIndexOf("/"))
-        : "";
+      const parentFromPath = parentWorkspacePath(clonePath);
       const defaultParent = parentFromPath || defaultCloneParent;
       if (defaultParent) {
-        setClonePath(`${defaultParent}/${repo.name}`);
+        setClonePath(joinWorkspacePath(defaultParent, repo.name));
       }
     }
   };
@@ -239,32 +239,10 @@ export default function SetupPage() {
         throw new Error("No output stream received from server.");
       }
 
-      const reader = cloneRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const data = JSON.parse(line);
-            if (data.type === "log") {
-              setCloneLogs((prev) => [...prev, data.message]);
-            } else if (data.type === "error") {
-              throw new Error(data.message);
-            }
-          } catch {
-            // Ignore partial JSON lines
-          }
-        }
-      }
+      const cloneResult = await consumeCloneStream(cloneRes.body, (message) => {
+        setCloneLogs((prev) => [...prev, message]);
+      });
+      const resolvedClonePath = cloneResult.path || clonePath;
 
       setCloneLogs((prev) => [...prev, "> Starting workspace database configuration..."]);
 
@@ -286,18 +264,22 @@ export default function SetupPage() {
 
       const newProfile = profData.profile as UserProfile;
 
-      await fetch("/api/profiles", {
+      const updateRes = await fetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "update",
           id: newProfile.id,
           updates: {
-            workspacePath: clonePath,
+            workspacePath: resolvedClonePath,
             workspaceType: "automatic",
           },
         }),
       });
+      const updateData = await updateRes.json();
+      if (!updateRes.ok || updateData.success === false) {
+        throw new Error(updateData.error || "Failed to save workspace path");
+      }
 
       const diagRes = await fetch("/api/workspace/diagnostics");
       const diagData = await diagRes.json();
