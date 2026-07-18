@@ -61,6 +61,35 @@ cpSync(staticSrc, staticDest, { recursive: true });
 cpSync(publicSrc, publicDest, { recursive: true });
 cpSync(shellEnvSrc, shellEnvDest);
 
+// Turbopack standalone NFT often omits App Route runtimes (e.g.
+// app-route-turbo.runtime.prod.js). Without them, every /api/* route returns
+// a bare 500 "Internal Server Error" in the packaged Electron app.
+const nextServerSrc = path.join(root, "node_modules", "next", "dist", "compiled", "next-server");
+const nextServerDest = path.join(
+  standalone,
+  "node_modules",
+  "next",
+  "dist",
+  "compiled",
+  "next-server"
+);
+if (!fs.existsSync(nextServerSrc)) {
+  console.error(`Missing Next.js runtimes at ${nextServerSrc}`);
+  process.exit(1);
+}
+mkdirSync(nextServerDest, { recursive: true });
+let copiedRuntimes = 0;
+for (const name of fs.readdirSync(nextServerSrc)) {
+  if (!name.endsWith(".runtime.prod.js")) continue;
+  cpSync(path.join(nextServerSrc, name), path.join(nextServerDest, name));
+  copiedRuntimes += 1;
+}
+if (copiedRuntimes === 0) {
+  console.error("No Next.js *.runtime.prod.js files found to copy into standalone");
+  process.exit(1);
+}
+console.log(`Ensured ${copiedRuntimes} Next.js server runtimes in standalone`);
+
 try {
   const out = execSync(`du -sh "${standalone}"`, { encoding: "utf8" }).trim();
   console.log(`Standalone ready: ${out}`);
