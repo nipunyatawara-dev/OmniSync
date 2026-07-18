@@ -66,7 +66,7 @@ export async function prepareWorkspaceForRunner(
 
   const packageJsonPath = path.join(cwd, "package.json");
   if (!(await pathExists(packageJsonPath))) {
-    log("No package.json found — starting command without install/build preflight.");
+    log("No package.json found - starting command without install/build preflight.");
     return;
   }
 
@@ -84,7 +84,7 @@ export async function prepareWorkspaceForRunner(
   if (!(await pathExists(nodeModulesPath))) {
     const installArgs = await resolveDependencyInstallArgs(cwd);
     const installCommand = `npm ${installArgs.join(" ")}`;
-    log("node_modules is missing — installing dependencies first...");
+    log("node_modules is missing - installing dependencies first...");
     log(`Executing: ${installCommand}`);
     const installCode = await runShellCommand(cwd, installCommand, log);
     if (installCode !== 0) {
@@ -101,7 +101,7 @@ export async function prepareWorkspaceForRunner(
     (isProductionRunCommand(runCommand) || !isDevRunCommand(runCommand));
 
   if (shouldBuild) {
-    log(".next build output is missing — running build command before starting server...");
+    log(".next build output is missing - running build command before starting server...");
     log(`Executing: ${buildCommand}`);
     const buildCode = await runShellCommand(cwd, buildCommand, log);
     if (buildCode !== 0) {
@@ -109,6 +109,6 @@ export async function prepareWorkspaceForRunner(
     }
     log("Build completed successfully.");
   } else if (isNextProject && !hasBuild && isDevRunCommand(runCommand)) {
-    log("No .next folder yet — dev server will create it on first compile.");
+    log("No .next folder yet - dev server will create it on first compile.");
   }
 }

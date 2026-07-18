@@ -412,7 +412,7 @@ export default function WorkspaceSettingsView({
   const missingCount = diagnostics?.missingDependencies.length ?? 0;
   const syncLabel =
     syncSnapshot == null
-      ? "—"
+      ? "-"
       : syncSnapshot.ahead === 0 && syncSnapshot.behind === 0
         ? "Up to date"
         : `${syncSnapshot.ahead}↑ ${syncSnapshot.behind}↓`;
@@ -496,7 +496,7 @@ export default function WorkspaceSettingsView({
       >
         <StatCard
           label="Branch"
-          value={isLoadingInfo ? "…" : diagnostics?.currentBranch || "—"}
+          value={isLoadingInfo ? "…" : diagnostics?.currentBranch || "-"}
           detail={syncSnapshot?.upstream ? syncSnapshot.upstream.split("/").pop() ?? undefined : undefined}
         />
         <StatCard
@@ -511,7 +511,7 @@ export default function WorkspaceSettingsView({
         />
         <StatCard
           label="Working tree"
-          value={isLoadingInfo ? "…" : gitClean ? "Clean" : diagnostics?.gitStatus || "—"}
+          value={isLoadingInfo ? "…" : gitClean ? "Clean" : diagnostics?.gitStatus || "-"}
           tone={gitClean ? "success" : diagnostics?.gitStatus === "Not a Git repository" ? "danger" : "warning"}
         />
         <StatCard
@@ -703,7 +703,7 @@ export default function WorkspaceSettingsView({
                 border: "1px solid var(--color-attention-border, rgba(210, 153, 34, 0.3))",
               }}
             >
-              Current branch is protected — direct commits are blocked.
+              Current branch is protected - direct commits are blocked.
             </div>
           )}
         </div>

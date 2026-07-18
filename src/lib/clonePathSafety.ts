@@ -37,7 +37,7 @@ export async function assertAllowedClonePath(localPath: string): Promise<string>
         const realParent = await fs.realpath(parent);
         realTarget = path.join(realParent, path.basename(resolved));
       } catch {
-        // Parent may not exist yet — use resolved path for containment check
+        // Parent may not exist yet - use resolved path for containment check
         realTarget = resolved;
       }
     } else {

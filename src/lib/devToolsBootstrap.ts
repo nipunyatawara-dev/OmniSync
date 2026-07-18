@@ -203,7 +203,7 @@ async function resolveViaLoginShell(name: string): Promise<string | null> {
 }
 
 async function resolveWhich(name: string): Promise<string | null> {
-  // 1) Prefer direct filesystem checks — reliable in packaged Electron.
+  // 1) Prefer direct filesystem checks - reliable in packaged Electron.
   for (const candidate of candidatePathsFor(name)) {
     if (await pathIsRunnable(candidate)) {
       return candidate;
@@ -332,7 +332,7 @@ async function linkIntoToolsBin(source: string, name: string, log: DevToolsLogFn
     // ignore
   }
   if (process.platform === "win32") {
-    // Symlinks often need admin on Windows — copy instead.
+    // Symlinks often need admin on Windows - copy instead.
     await fs.copyFile(source, dest);
     log(`Copied ${destName} ← ${source}`);
     return;
@@ -344,7 +344,7 @@ async function linkIntoToolsBin(source: string, name: string, log: DevToolsLogFn
 async function installNode(log: DevToolsLogFn): Promise<void> {
   await ensureDirs();
   if (process.platform !== "win32" && (await hasBrew())) {
-    log("Homebrew detected — installing Node.js via brew…");
+    log("Homebrew detected - installing Node.js via brew…");
     await brewInstall("node", log);
     clearShellEnvCache();
     return;
@@ -405,7 +405,7 @@ async function installNode(log: DevToolsLogFn): Promise<void> {
 async function installGh(log: DevToolsLogFn): Promise<void> {
   await ensureDirs();
   if (process.platform !== "win32" && (await hasBrew())) {
-    log("Homebrew detected — installing GitHub CLI via brew…");
+    log("Homebrew detected - installing GitHub CLI via brew…");
     await brewInstall("gh", log);
     clearShellEnvCache();
     return;
@@ -482,7 +482,7 @@ async function installGh(log: DevToolsLogFn): Promise<void> {
 async function installGit(log: DevToolsLogFn): Promise<void> {
   await ensureDirs();
   if (process.platform !== "win32" && (await hasBrew())) {
-    log("Homebrew detected — installing Git via brew…");
+    log("Homebrew detected - installing Git via brew…");
     await brewInstall("git", log);
     clearShellEnvCache();
     return;
@@ -490,11 +490,11 @@ async function installGit(log: DevToolsLogFn): Promise<void> {
 
   if (process.platform === "darwin") {
     log("Opening Apple’s Command Line Tools installer for Git…");
-    log("Complete the macOS dialog, then return here — we’ll detect Git automatically.");
+    log("Complete the macOS dialog, then return here - we’ll detect Git automatically.");
     try {
       await runCommand("xcode-select", ["--install"], log);
     } catch (err) {
-      // Already installed or dialog already open — still re-probe afterwards.
+      // Already installed or dialog already open - still re-probe afterwards.
       const msg = err instanceof Error ? err.message : String(err);
       log(msg);
     }
@@ -504,7 +504,7 @@ async function installGit(log: DevToolsLogFn): Promise<void> {
 
   if (process.platform === "win32") {
     const url = "https://git-scm.com/download/win";
-    log(`Opening ${url} — install Git for Windows, then click Refresh.`);
+    log(`Opening ${url} - install Git for Windows, then click Refresh.`);
     try {
       await runCommand("cmd.exe", ["/c", "start", "", url], log);
     } catch (err) {

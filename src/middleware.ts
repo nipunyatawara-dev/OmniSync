@@ -5,7 +5,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 // In production, require an explicitly provisioned token (Electron sets this).
 // In development, keep a persistent in-memory token so standalone `next dev`
-// still works — but that mode is not a supported secure deployment.
+// still works - but that mode is not a supported secure deployment.
 let serverToken = process.env.OMNISYNC_API_TOKEN || null;
 if (!serverToken && !isProduction) {
   const globalRef = globalThis as unknown as { omnisyncServerToken?: string };
@@ -28,7 +28,7 @@ function isLocalHostname(value: string | null | undefined): boolean {
   return LOCAL_HOSTNAMES.has(hostname) || LOCAL_HOSTNAMES.has(value.split(":")[0]);
 }
 
-/** Protect all /api/* routes (local desktop app — no public API surface). */
+/** Protect all /api/* routes (local desktop app - no public API surface). */
 function isProtectedApiPath(path: string): boolean {
   return path.startsWith("/api/");
 }

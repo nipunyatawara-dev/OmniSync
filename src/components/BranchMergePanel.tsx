@@ -82,7 +82,7 @@ export default function BranchMergePanel({
       setPreviewMessage(typeof data.message === "string" ? data.message : null);
       setCheckedPair(pairKey);
       if (data.clean) {
-        showNotification("No conflicts — safe to merge", "success", 2500);
+        showNotification("No conflicts - safe to merge", "success", 2500);
       } else if ((data.conflicts || []).length > 0) {
         showNotification(`${data.conflicts.length} file(s) would conflict`, "error", 3500);
       }
@@ -96,7 +96,7 @@ export default function BranchMergePanel({
   const handleMerge = async () => {
     if (!canMerge) return;
     if (branchProtected && target === currentBranch) {
-      // Protection is for the target branch name specifically — API also enforces.
+      // Protection is for the target branch name specifically - API also enforces.
     }
     setMerging(true);
     try {
@@ -241,7 +241,7 @@ export default function BranchMergePanel({
             padding: "8px 10px",
           }}
         >
-          No conflicts — safe to merge <strong>{source}</strong> into <strong>{target}</strong>.
+          No conflicts - safe to merge <strong>{source}</strong> into <strong>{target}</strong>.
         </div>
       )}
 
@@ -293,7 +293,7 @@ export default function BranchMergePanel({
                 if (conflicts[0]) onConflictSelect?.(conflicts[0]);
                 showNotification(
                   data.status === "conflicts"
-                    ? "Merge started — resolve conflicts"
+                    ? "Merge started - resolve conflicts"
                     : data.message || "Merge finished",
                   data.status === "ok" ? "success" : "info",
                   3500

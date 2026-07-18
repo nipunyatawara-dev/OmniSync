@@ -18,8 +18,8 @@ function ShieldIcon() {
 /**
  * Prompts the user for macOS file-system permissions the first time (and on every
  * subsequent launch until granted) they reach the workspace selection screen.
- * Full Disk Access can only ever be toggled by the user in System Settings — Apple
- * gives apps no way to trigger that consent sheet — so we explain why we need it and
+ * Full Disk Access can only ever be toggled by the user in System Settings - Apple
+ * gives apps no way to trigger that consent sheet - so we explain why we need it and
  * deep-link straight to the right pane. As a lighter alternative we also offer to
  * request access to just the Documents folder, which is enough for the default
  * "clone into ~/Documents/GitHub" flow and does trigger a native one-time prompt.
@@ -147,7 +147,7 @@ export default function SystemPermissionsPrompt() {
             </svg>
           </button>
           <p className="perm-prompt-hint">
-            Turn on the toggle next to OmniSync, then come back to this window — we&rsquo;ll pick it up
+            Turn on the toggle next to OmniSync, then come back to this window - we&rsquo;ll pick it up
             automatically.
           </p>
 

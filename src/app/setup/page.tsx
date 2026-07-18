@@ -422,7 +422,7 @@ export default function SetupPage() {
         setIsPatValidating(false);
       }
     } else {
-      // Continue without GitHub — remember local-only so next launch skips login.
+      // Continue without GitHub - remember local-only so next launch skips login.
       setGithubConnected(false);
       setGithubUserDetail(null);
       markLocalOnlyMode();

@@ -62,7 +62,7 @@ export default function GitHubConnectModal({
             </h2>
             <p className="gh-connect-subtitle">
               {isSuccess
-                ? "Your account is linked — continuing to workspace setup"
+                ? "Your account is linked - continuing to workspace setup"
                 : "Enter the code below on GitHub to grant OmniSync access"}
             </p>
           </div>

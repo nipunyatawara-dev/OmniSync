@@ -45,7 +45,7 @@ export class GitCommandError extends Error {
 
 function gitAuthArgs(token?: string): string[] {
   if (!token) return [];
-  // Prefer URL rewrite over Bearer headers — more reliable for HTTPS remotes in
+  // Prefer URL rewrite over Bearer headers - more reliable for HTTPS remotes in
   // GUI apps (no TTY). Disable credential helpers so keychain cannot override.
   return [
     "-c",
@@ -58,7 +58,7 @@ function gitAuthArgs(token?: string): string[] {
 function gitChildEnv(): NodeJS.ProcessEnv {
   return {
     ...augmentProcessEnv(),
-    // Never prompt for username/password — that yields "Device not configured" in Electron.
+    // Never prompt for username/password - that yields "Device not configured" in Electron.
     GIT_TERMINAL_PROMPT: "0",
   };
 }
@@ -362,7 +362,7 @@ export async function getBranches(cwd: string): Promise<string[]> {
       if (short) names.add(short);
     }
   } catch {
-    // No remotes yet — local list is enough.
+    // No remotes yet - local list is enough.
   }
 
   return [...names].sort((a, b) => a.localeCompare(b));
@@ -626,7 +626,7 @@ export function parseDecorateBranches(decorate: string): string[] {
 function parseRepoCommitLine(line: string): RepoCommit | null {
   if (!line.trim()) return null;
   // hash|author|email|date|authoredAt|subject|decorate|parents
-  // subject may contain | — take fixed head/tail fields
+  // subject may contain | - take fixed head/tail fields
   const parts = line.split("|");
   if (parts.length < 8) {
     // Backward-compatible: older 5-field format without email

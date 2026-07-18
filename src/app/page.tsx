@@ -369,7 +369,7 @@ export default function DashboardPage() {
                 (runner.runnerStatus?.status === "running" || runner.runnerStatus?.status === "starting")
               ) {
                 showNotification(
-                  "Run command or port changed — stop and restart the dev server to apply.",
+                  "Run command or port changed - stop and restart the dev server to apply.",
                   "info",
                   6000
                 );

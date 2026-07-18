@@ -202,7 +202,7 @@ input, select, textarea, button {
   font-size: inherit;
 }
 
-/* Scrollbars — hidden globally, scroll still works */
+/* Scrollbars - hidden globally, scroll still works */
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;

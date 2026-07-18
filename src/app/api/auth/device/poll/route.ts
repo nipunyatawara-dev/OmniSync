@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       avatarUrl,
     });
 
-    // Never return the access token to the browser — it is stored server-side only.
+    // Never return the access token to the browser - it is stored server-side only.
     return NextResponse.json({
       status: "success",
       username,

@@ -63,9 +63,9 @@ export default function DependencyInstallModal({
       ? `Resolving ${missingCount} missing package${missingCount === 1 ? "" : "s"} via npm install…`
       : phase === "success"
         ? summary.packagesAdded != null
-          ? `Added ${summary.packagesAdded} packages in ${summary.durationSeconds ?? "—"}s`
+          ? `Added ${summary.packagesAdded} packages in ${summary.durationSeconds ?? "-"}s`
           : `${missingCount} package${missingCount === 1 ? "" : "s"} resolved`
-        : "npm install did not complete — review the log below";
+        : "npm install did not complete - review the log below";
 
   return (
     <div className="dep-install-backdrop" role="dialog" aria-modal="true" aria-labelledby="dep-install-title">

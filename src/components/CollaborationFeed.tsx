@@ -82,7 +82,7 @@ export default function CollaborationFeed({
   sessionEmail,
   sessionLogin,
 }: CollaborationFeedProps) {
-  // git log returns newest first — keep that order (latest at top)
+  // git log returns newest first - keep that order (latest at top)
   if (isLoading && commits.length === 0) {
     return (
       <div style={{ padding: "32px", color: "var(--color-fg-muted)", fontSize: "13px" }}>

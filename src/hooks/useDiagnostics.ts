@@ -121,7 +121,7 @@ export function useDiagnostics(
       return;
     }
 
-    // If node_modules already exists, dependencies were installed before — do not
+    // If node_modules already exists, dependencies were installed before - do not
     // auto re-run npm install when switching back to this workspace. Partial gaps
     // can still be fixed manually from the Diagnostics tab.
     if (diagnostics.nodeModulesExists) {

@@ -1,4 +1,4 @@
-/** Keep in sync with root `appPort.js`. Never read generic PORT — it leaks into other projects. */
+/** Keep in sync with root `appPort.js`. Never read generic PORT - it leaks into other projects. */
 export const OMNISYNC_APP_PORT =
   Number(process.env.NEXT_PUBLIC_OMNISYNC_PORT) || 47821;
 

@@ -153,7 +153,7 @@ export default function GitChangesPanel({ branchProtected, refreshKey = 0, onCom
           border: "1px solid var(--color-border-default)",
           backgroundColor: "rgba(22, 27, 34, 0.4)",
         }}>
-          Working tree clean — no uncommitted changes.
+          Working tree clean - no uncommitted changes.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "180px", overflowY: "auto" }}>

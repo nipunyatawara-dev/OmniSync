@@ -31,7 +31,7 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
   const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(false);
   const [oauthState, setOauthState] = useState<OAuthState>("idle");
   const [oauthStatusText, setOauthStatusText] = useState("");
-  // Bundled public OmniSync GitHub app — Sign in works without a custom Client ID.
+  // Bundled public OmniSync GitHub app - Sign in works without a custom Client ID.
   const [oauthConfigured, setOauthConfigured] = useState<boolean | null>(true);
   const [githubClientId, setGithubClientId] = useState(BUNDLED_GITHUB_OAUTH_CLIENT_ID);
   const [showOauthConfigForm, setShowOauthConfigForm] = useState(false);
@@ -87,7 +87,7 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
 
         if (data.status === "success") {
           active = false;
-          setOauthStatusText("Signed in — preparing your workspace…");
+          setOauthStatusText("Signed in - preparing your workspace…");
           setOauthState("success");
 
           await onAuthSuccessRef.current({
@@ -185,7 +185,7 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
   );
 
   const handleGitHubSignIn = useCallback(() => {
-    // Always start Device Flow — server resolves saved/env/bundled Client ID.
+    // Always start Device Flow - server resolves saved/env/bundled Client ID.
     // Custom Client ID is optional via "Configure Custom GitHub OAuth App".
     setShowOauthConfigForm(false);
     triggerGitHubDeviceFlow();

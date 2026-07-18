@@ -31,7 +31,7 @@ describe("shellEnv", () => {
       const env = augmentProcessEnv({ FOO: "bar", PATH: "/usr/bin" });
       expect(env.FOO).toBe("bar");
       // augmentProcessEnv itself does not scrub (OmniSync server needs OMNISYNC_*);
-      // spawn scrub is tested indirectly — cleaned bases must not pick up parent keys.
+      // spawn scrub is tested indirectly - cleaned bases must not pick up parent keys.
       expect(env.TURBO_CACHE_DIR).toBeUndefined();
       expect(env.NEXT_RUNTIME).toBeUndefined();
       expect(env.TURBOPACK).toBeUndefined();

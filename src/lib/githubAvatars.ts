@@ -65,7 +65,7 @@ export async function resolveAuthorAvatars(
   if (!fullName) return map;
 
   try {
-    // Pull recent commits — includes author.avatar_url + commit.author.email
+    // Pull recent commits - includes author.avatar_url + commit.author.email
     const res = await fetch(
       `https://api.github.com/repos/${fullName}/commits?per_page=100`,
       {

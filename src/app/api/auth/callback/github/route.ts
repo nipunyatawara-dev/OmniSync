@@ -126,7 +126,7 @@ function renderHtmlResponse(
   const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
   const safeUsername = escapeHtml(username);
   const safeError = escapeHtml(errorMessage);
-  // Never embed the access token — session is already saved server-side.
+  // Never embed the access token - session is already saved server-side.
   const statusObject = serializeForScript({
     success,
     username,

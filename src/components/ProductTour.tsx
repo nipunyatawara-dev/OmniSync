@@ -64,14 +64,14 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "",
     title: "Welcome to OmniSync",
     description:
-      "Your local control center for GitHub-backed repositories. This guide walks through every major area — editing code, syncing git, running servers, diagnosing issues, and configuring your workspace.",
+      "Your local control center for GitHub-backed repositories. This guide walks through every major area - editing code, syncing git, running servers, diagnosing issues, and configuring your workspace.",
     position: "center",
   },
   {
     targetId: "tour-sidebar",
     title: "Navigation sidebar",
     description:
-      "Five sections, one sidebar:\n• Workspace — browse files, edit code, run servers\n• Git Sync — fetch, pull, push, resolve conflicts\n• Diagnostics — audit Node.js and dependencies\n• Timeline — commit calendar and history\n• Settings — global and workspace preferences",
+      "Five sections, one sidebar:\n• Workspace - browse files, edit code, run servers\n• Git Sync - fetch, pull, push, resolve conflicts\n• Diagnostics - audit Node.js and dependencies\n• Timeline - commit calendar and history\n• Settings - global and workspace preferences",
     position: "right",
     tab: "workspace",
     section: "Overview",
@@ -143,7 +143,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-git-changes",
     title: "Staging & commits",
     description:
-      "Review changed files, stage selections, write commit messages, and push — all from the git panel without switching to a terminal.",
+      "Review changed files, stage selections, write commit messages, and push - all from the git panel without switching to a terminal.",
     position: "right",
     tab: "git",
     section: "Git Sync",
@@ -152,7 +152,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-git-conflicts",
     title: "Conflict resolver",
     description:
-      "When merges produce conflicts, pick a file here to open the three-pane resolver — yours, theirs, and the merged result — and save the resolution.",
+      "When merges produce conflicts, pick a file here to open the three-pane resolver - yours, theirs, and the merged result - and save the resolution.",
     position: "right",
     tab: "git",
     section: "Git Sync",

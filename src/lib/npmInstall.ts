@@ -18,7 +18,7 @@ export async function isNativeExecutable(filePath: string): Promise<boolean> {
     await handle.read(header, 0, 4, 0);
     await handle.close();
 
-    // Mach-O (32/64-bit), ELF, or PE — not a #! node script.
+    // Mach-O (32/64-bit), ELF, or PE - not a #! node script.
     const isMachO =
       header[0] === 0xcf &&
       header[1] === 0xfa &&

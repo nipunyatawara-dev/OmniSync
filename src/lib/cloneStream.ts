@@ -45,7 +45,7 @@ export type ConsumeCloneStreamResult = {
 
 /**
  * Read the clone NDJSON body. Throws on stream error events.
- * Requires a final success event — otherwise the clone is treated as failed.
+ * Requires a final success event - otherwise the clone is treated as failed.
  */
 export async function consumeCloneStream(
   body: ReadableStream<Uint8Array>,
