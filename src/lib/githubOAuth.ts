@@ -1,7 +1,7 @@
 import { getOauthConfig } from "@/lib/profiles";
+import { BUNDLED_GITHUB_OAUTH_CLIENT_ID } from "@/lib/githubOAuthConstants";
 
-/** Public OmniSync GitHub OAuth app — used for Device Flow when no custom app is configured. */
-export const BUNDLED_GITHUB_OAUTH_CLIENT_ID = "Ov23li8zIwN0BXPmjmA4";
+export { BUNDLED_GITHUB_OAUTH_CLIENT_ID } from "@/lib/githubOAuthConstants";
 
 /**
  * Resolve the GitHub OAuth client ID from saved config, env vars, or the bundled default.

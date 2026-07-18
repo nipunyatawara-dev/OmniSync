@@ -1,6 +1,7 @@
 "use client";
 
 import { OMNISYNC_APP_ORIGIN } from "@/lib/appPort";
+import { BUNDLED_GITHUB_OAUTH_CLIENT_ID } from "@/lib/githubOAuthConstants";
 
 interface LoginStepProps {
   gitUsername: string;
@@ -128,7 +129,11 @@ export default function LoginStep({
                     }}
                     className="text-xs text-on-surface-variant hover:text-secondary-container underline bg-transparent border-0 cursor-pointer"
                   >
-                    {oauthConfigured ? "Reconfigure GitHub OAuth App" : "Configure Custom GitHub OAuth App"}
+                    {oauthConfigured &&
+                    githubClientId &&
+                    githubClientId !== BUNDLED_GITHUB_OAUTH_CLIENT_ID
+                      ? "Reconfigure GitHub OAuth App"
+                      : "Configure Custom GitHub OAuth App (optional)"}
                   </button>
                 </div>
 

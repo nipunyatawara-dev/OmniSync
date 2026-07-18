@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { BUNDLED_GITHUB_OAUTH_CLIENT_ID } from "@/lib/githubOAuthConstants";
 
 export type OAuthState = "idle" | "authorizing" | "success";
 
@@ -13,12 +14,26 @@ interface UseGithubOAuthOptions {
   onAuthSuccess: (data: OAuthSuccessData) => void | Promise<void>;
 }
 
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  try {
+    return text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    throw new Error(
+      res.ok
+        ? "Server returned an invalid response."
+        : `Server error (${res.status}). ${text.slice(0, 120).trim() || "No details."}`
+    );
+  }
+}
+
 export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
   const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(false);
   const [oauthState, setOauthState] = useState<OAuthState>("idle");
   const [oauthStatusText, setOauthStatusText] = useState("");
-  const [oauthConfigured, setOauthConfigured] = useState<boolean | null>(null);
-  const [githubClientId, setGithubClientId] = useState("");
+  // Bundled public OmniSync GitHub app — Sign in works without a custom Client ID.
+  const [oauthConfigured, setOauthConfigured] = useState<boolean | null>(true);
+  const [githubClientId, setGithubClientId] = useState(BUNDLED_GITHUB_OAUTH_CLIENT_ID);
   const [showOauthConfigForm, setShowOauthConfigForm] = useState(false);
   const [inputClientId, setInputClientId] = useState("");
   const [isSavingOauthConfig, setIsSavingOauthConfig] = useState(false);
@@ -41,15 +56,16 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
   const checkOauthConfig = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/config");
-      const data = await res.json();
-      if (data.hasConfig) {
-        setOauthConfigured(true);
-        setGithubClientId(data.clientId || "");
-      } else {
-        setOauthConfigured(false);
-      }
+      const data = await readJsonResponse(res);
+      const clientId =
+        (typeof data.clientId === "string" && data.clientId) || BUNDLED_GITHUB_OAUTH_CLIENT_ID;
+      // hasConfig is true whenever a client ID is available (saved, env, or bundled).
+      setOauthConfigured(data.hasConfig !== false && !!clientId);
+      setGithubClientId(clientId);
     } catch {
-      setOauthConfigured(false);
+      // Keep the baked-in public app so Sign in still works if config API fails.
+      setOauthConfigured(true);
+      setGithubClientId(BUNDLED_GITHUB_OAUTH_CLIENT_ID);
     }
   }, []);
 
@@ -67,7 +83,7 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceCode: devCode }),
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
 
         if (data.status === "success") {
           active = false;
@@ -75,8 +91,8 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
           setOauthState("success");
 
           await onAuthSuccessRef.current({
-            username: data.username,
-            avatarUrl: data.avatarUrl || "",
+            username: typeof data.username === "string" ? data.username : "",
+            avatarUrl: typeof data.avatarUrl === "string" ? data.avatarUrl : "",
           });
 
           await new Promise((resolve) => setTimeout(resolve, 1400));
@@ -86,7 +102,9 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
           active = false;
           setOauthState("idle");
           setIsOAuthModalOpen(false);
-          alert(`Authentication error: ${data.error}`);
+          alert(
+            `Authentication error: ${typeof data.error === "string" ? data.error : "Unknown error"}`
+          );
         } else {
           setTimeout(checkStatus, intervalSeconds * 1000);
         }
@@ -108,17 +126,20 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
 
     try {
       const res = await fetch("/api/auth/device/code", { method: "POST" });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
 
       if (data.error) {
-        throw new Error(data.error);
+        throw new Error(typeof data.error === "string" ? data.error : "Device flow failed");
       }
 
-      setUserCode(data.userCode);
-      setVerificationUri(data.verificationUri);
+      setUserCode(typeof data.userCode === "string" ? data.userCode : "");
+      setVerificationUri(typeof data.verificationUri === "string" ? data.verificationUri : "");
       setOauthStatusText("Waiting for authorization on GitHub...");
 
-      startDevicePoll(data.deviceCode, data.interval || 5);
+      startDevicePoll(
+        typeof data.deviceCode === "string" ? data.deviceCode : "",
+        typeof data.interval === "number" ? data.interval : 5
+      );
     } catch (err: unknown) {
       setOauthState("idle");
       setIsOAuthModalOpen(false);
@@ -143,14 +164,16 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clientId: inputClientId, clientSecret: "device_flow_public" }),
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (data.success) {
           setOauthConfigured(true);
           setGithubClientId(inputClientId);
           setShowOauthConfigForm(false);
           triggerGitHubDeviceFlow();
         } else {
-          setOauthConfigError(data.error || "Failed to save configuration.");
+          setOauthConfigError(
+            typeof data.error === "string" ? data.error : "Failed to save configuration."
+          );
         }
       } catch (err: unknown) {
         setOauthConfigError(err instanceof Error ? err.message : "Error saving Client ID.");
@@ -162,12 +185,11 @@ export function useGithubOAuth({ onAuthSuccess }: UseGithubOAuthOptions) {
   );
 
   const handleGitHubSignIn = useCallback(() => {
-    if (oauthConfigured && githubClientId) {
-      triggerGitHubDeviceFlow();
-    } else {
-      setShowOauthConfigForm(true);
-    }
-  }, [oauthConfigured, githubClientId, triggerGitHubDeviceFlow]);
+    // Always start Device Flow — server resolves saved/env/bundled Client ID.
+    // Custom Client ID is optional via "Configure Custom GitHub OAuth App".
+    setShowOauthConfigForm(false);
+    triggerGitHubDeviceFlow();
+  }, [triggerGitHubDeviceFlow]);
 
   const copyUserCode = useCallback(() => {
     navigator.clipboard.writeText(userCode);
