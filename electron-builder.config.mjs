@@ -25,6 +25,9 @@ export default {
     target: ["dmg"],
     extendInfo: {
       CFBundleShortVersionString: pkg.omnisyncRelease,
+      // electron-builder defaults CFBundleVersion to package.json "version" (0.1.0),
+      // which shows up as the parenthetical in macOS About — keep it in sync with the release label.
+      CFBundleVersion: pkg.omnisyncRelease,
     },
   },
   win: {
