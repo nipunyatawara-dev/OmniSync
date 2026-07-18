@@ -30,6 +30,20 @@ export default {
       CFBundleVersion: pkg.omnisyncRelease,
     },
   },
+  dmg: {
+    title: `OmniSync ${pkg.omnisyncRelease}`,
+    background: "build/dmg/background.png",
+    iconSize: 80,
+    iconTextSize: 12,
+    window: {
+      width: 540,
+      height: 380,
+    },
+    contents: [
+      { x: 140, y: 220, type: "file" },
+      { x: 400, y: 220, type: "link", path: "/Applications" },
+    ],
+  },
   win: {
     target: ["nsis"],
   },
