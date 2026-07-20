@@ -12,6 +12,10 @@
 - Setup-page developer tools prompt for Node.js, Git, and GitHub CLI with in-app install
 - Setup-page loading state while the workspace launcher bootstraps
 - Branded macOS DMG installer window (custom background, drag-to-Applications layout)
+- Windows NSIS installer (`.exe`) with desktop and Start Menu shortcuts, plus a custom install-directory option
+- npm availability and `engines` compatibility checks in Environment Diagnostics
+- Platform-aware terminal shell preference: PowerShell / Command Prompt / Git Bash on Windows; zsh / bash / fish / sh on macOS
+- Bundled GitHub OAuth client ID so Device Flow works without configuring a custom OAuth app
 
 ### Fixed
 - Remote-only branches (e.g. `dev`) missing from branch pickers after clone
@@ -23,12 +27,14 @@
 - DevTools prompt missing installed tools on Windows due to path resolution
 - Git clone path handling and cleanup when a clone fails mid-stream
 - Electron DMGs ballooning in size because prior `dist/` builds were nested into the standalone package
+- Packaged Electron apps returning API 500s because Next.js server runtimes were missing from the standalone build
 
 ### Changed
 - Dependencies status badge copy (“Dependencies clean” instead of `node_modules`)
 - Removed status indicator dot next to Environment Diagnostics title
 - Git identity and sync behavior copy clarified for global vs per-workspace settings
-- Standalone packaging prunes build artifacts and non-runtime files for leaner macOS DMGs
+- Standalone packaging prunes build artifacts and non-runtime files for leaner installers
+- Dashboard terminal uses the selected shell for prompts and free-form commands
 
 
 ## 0.3b
