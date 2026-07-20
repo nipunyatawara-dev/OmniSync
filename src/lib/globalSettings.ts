@@ -23,7 +23,14 @@ export async function getGlobalSettings(): Promise<GlobalSettings> {
     const raw = await fs.readFile(SETTINGS_FILE, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     delete parsed.enableTelemetry;
-    return { ...DEFAULT_GLOBAL_SETTINGS, ...parsed };
+    const settings = { ...DEFAULT_GLOBAL_SETTINGS, ...parsed } as GlobalSettings;
+    if (
+      process.platform === "win32" &&
+      !["powershell", "pwsh", "cmd", "bash"].includes(String(settings.terminalShell || "").toLowerCase())
+    ) {
+      settings.terminalShell = "powershell";
+    }
+    return settings;
   } catch (error: unknown) {
     const err = error as { code?: string };
     if (err?.code === "ENOENT") {

@@ -7,6 +7,7 @@ import WorkspaceGitSettingsView from "@/components/WorkspaceGitSettingsView";
 import WorkspaceSettingsView from "@/components/WorkspaceSettingsView";
 import { useGlobalSettings } from "@/hooks/useGlobalSettings";
 import { UserProfile } from "@/lib/profiles";
+import { displayWorkspaceName } from "@/lib/workspacePathJoin";
 
 export type SettingsTab = "general" | "git" | "workspace";
 
@@ -27,7 +28,7 @@ const TABS: { id: SettingsTab; label: string }[] = [
 ];
 
 function workspaceLabel(profile: UserProfile): string {
-  return profile.name || profile.workspacePath?.split("/").pop() || "Untitled workspace";
+  return displayWorkspaceName(profile.name, profile.workspacePath);
 }
 
 export default function SettingsPageView({

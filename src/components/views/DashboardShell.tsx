@@ -10,10 +10,12 @@ import type { UserProfile } from "@/lib/profiles";
 import type { DashboardTab } from "@/types/dashboard";
 import type { ToastType } from "@/hooks/useNotifications";
 import type { TerminalLine } from "@/lib/dashboardTerminalTypes";
+import { displayWorkspaceName } from "@/lib/workspacePathJoin";
 
 interface DashboardTerminalBindings {
   lines: TerminalLine[];
   prompt: string;
+  promptSuffix: string;
   input: string;
   setInput: (value: string) => void;
   height: number;
@@ -134,7 +136,9 @@ export default function DashboardShell({
       <header className="header">
         <div className="header-brand">
           <img src="/icon.png" alt="Logo" style={{ height: "20px", width: "20px", objectFit: "contain", borderRadius: "4px" }} />
-          <span style={{ fontSize: "14px", fontWeight: "600" }}>{activeProfile?.name || "OmniSync Workspace"}</span>
+          <span style={{ fontSize: "14px", fontWeight: "600" }}>
+            {displayWorkspaceName(activeProfile?.name, activeProfile?.workspacePath)}
+          </span>
           <span className={`badge ${activeProfile?.hasGitToken ? "badge-success" : "badge-info"}`} style={{ fontSize: "10px", marginLeft: "4px" }}>
             {activeProfile?.hasGitToken ? "GitHub Connected" : "Local Only"}
           </span>
@@ -147,7 +151,9 @@ export default function DashboardShell({
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "13px" }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: 600, color: "var(--color-header-text)" }}>{activeProfile?.name}</div>
+            <div style={{ fontWeight: 600, color: "var(--color-header-text)" }}>
+              {displayWorkspaceName(activeProfile?.name, activeProfile?.workspacePath)}
+            </div>
             <div style={{ fontSize: "11px", color: "var(--color-fg-muted)" }}>{activeProfile?.profession}</div>
           </div>
 
@@ -306,6 +312,7 @@ export default function DashboardShell({
             <DashboardTerminal
               lines={terminal.lines}
               prompt={terminal.prompt}
+              promptSuffix={terminal.promptSuffix}
               input={terminal.input}
               setInput={terminal.setInput}
               height={terminal.height}

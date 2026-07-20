@@ -5,7 +5,7 @@
 # OmniSync
 
 [![Version](https://img.shields.io/badge/version-0.4b-blue)](https://github.com/nipunyatawara-dev/Omnisync)
-[![Platform](https://img.shields.io/badge/platform-macOS%20(first)-lightgrey)](https://github.com/nipunyatawara-dev/Omnisync)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](https://github.com/nipunyatawara-dev/Omnisync)
 [![Stack](https://img.shields.io/badge/stack-Electron%20%2B%20Next.js-green)](https://github.com/nipunyatawara-dev/Omnisync)
 
 ---
@@ -164,12 +164,30 @@ Profile data, encrypted secrets, and workspace configuration are stored under `U
 ### Package for distribution
 
 ```bash
-npm run build
+npm run build:electron
 npm run electron:pack    # unpacked app in dist/
-npm run electron:build   # platform installers (.dmg, .exe, .AppImage)
+npm run electron:build   # current-platform installer
+```
+
+**macOS**
+
+```bash
+npm run electron:build:mac-arm64
+npm run electron:build:mac-x64
+# or both:
+npm run electron:build:mac
 ```
 
 macOS builds ship **unsigned** by default (`identity: null`). Distributing signed/notarized builds requires an Apple Developer identity configured in electron-builder. Unsigned apps may need right-click → Open on first launch.
+
+**Windows**
+
+```bash
+npm run electron:pack:win    # unpacked app for smoke testing
+npm run electron:build:win   # NSIS installer (.exe)
+```
+
+Windows builds are unsigned by default. SmartScreen may warn on first launch until the binary is Authenticode-signed. The dashboard terminal defaults to **PowerShell**; switch to Command Prompt or Git Bash in Settings → General.
 
 ### Tests
 
@@ -204,7 +222,7 @@ Electron shell (main.js)
 
 # Platform support
 
-OmniSync is **macOS-first**: IDE launch, folder permissions, and dock integration are optimized for macOS. Windows and Linux builds are supported via electron-builder, and `src/lib/platformLaunch.ts` includes cross-platform paths, but those targets receive less testing. Unsigned macOS builds may require right-click → Open on first launch; see Development → Package for distribution.
+OmniSync runs on **macOS and Windows** via Electron. macOS still has richer OS integrations (Full Disk Access prompts, Dock icon, hidden inset title bar). On Windows the dashboard terminal and runner use PowerShell by default, with Command Prompt and Git Bash available in Settings. Linux AppImage packaging is stubbed in electron-builder but is not a first-class target yet. Unsigned macOS builds may require right-click → Open on first launch; see Development → Package for distribution.
 
 # Contributing
 

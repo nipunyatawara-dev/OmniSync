@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { textFromLastCommand } from "@/lib/terminalCopy";
 import { terminalEnvModeForCommand } from "@/lib/dashboardTerminal";
+import { terminalPromptSuffix, defaultTerminalShell } from "@/lib/globalSettingsTypes";
 import type { TerminalLine } from "@/lib/dashboardTerminalTypes";
 
 function line(id: number, text: string, kind: TerminalLine["kind"]): TerminalLine {
@@ -22,6 +23,22 @@ describe("terminalEnvModeForCommand", () => {
     expect(terminalEnvModeForCommand("npm install")).toBe("inherit");
     expect(terminalEnvModeForCommand("git status")).toBe("inherit");
     expect(terminalEnvModeForCommand("ls")).toBe("inherit");
+  });
+});
+
+describe("terminalPromptSuffix", () => {
+  it("uses platform-appropriate glyphs", () => {
+    expect(terminalPromptSuffix("powershell")).toBe(">");
+    expect(terminalPromptSuffix("cmd")).toBe(">");
+    expect(terminalPromptSuffix("zsh")).toBe("%");
+    expect(terminalPromptSuffix("bash")).toBe("$");
+  });
+});
+
+describe("defaultTerminalShell", () => {
+  it("defaults by platform", () => {
+    expect(defaultTerminalShell("win32")).toBe("powershell");
+    expect(defaultTerminalShell("darwin")).toBe("zsh");
   });
 });
 

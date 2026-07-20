@@ -22,3 +22,25 @@ export function parentWorkspacePath(fullPath: string): string {
 
   return fullPath.slice(0, idx);
 }
+
+/** Final path segment (folder / file name) for Windows and POSIX paths. */
+export function basenameWorkspacePath(fullPath: string): string {
+  const trimmed = String(fullPath || "").replace(/[\\/]+$/, "");
+  if (!trimmed) return "";
+  const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  if (idx < 0) return trimmed;
+  return trimmed.slice(idx + 1) || trimmed;
+}
+
+/**
+ * Label for UI headers: prefer profile name, but if it looks like a full filesystem
+ * path (common Windows bug from split("/") only), show the folder basename.
+ */
+export function displayWorkspaceName(name?: string, workspacePath?: string): string {
+  const candidate = (name || workspacePath || "").trim();
+  if (!candidate) return "Untitled workspace";
+  if (/^[A-Za-z]:[\\/]/.test(candidate) || candidate.startsWith("\\\\") || /[\\/]/.test(candidate)) {
+    return basenameWorkspacePath(candidate) || candidate;
+  }
+  return candidate;
+}

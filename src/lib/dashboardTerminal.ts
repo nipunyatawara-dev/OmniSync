@@ -6,6 +6,7 @@ import { stripTerminalEscapeSequences } from "@/lib/npmInstall";
 import { buildWorkspaceChildEnv } from "@/lib/workspaceProcessEnv";
 import type { WorkspaceEnvMode } from "@/lib/workspaceProcessEnv";
 import type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
+import { defaultTerminalShell, terminalPromptSuffix } from "@/lib/globalSettingsTypes";
 
 export type { TerminalLine, TerminalLineKind } from "@/lib/dashboardTerminalTypes";
 
@@ -27,6 +28,8 @@ interface TerminalState {
   manualProcess: ChildProcess | null;
   isManualRunning: boolean;
   prompt: string;
+  promptSuffix: string;
+  shell: string;
 }
 
 const MAX_LINES = 5000;
@@ -34,12 +37,15 @@ const MAX_LINES = 5000;
 const globalRef = global as typeof globalThis & { dashboardTerminalState?: TerminalState };
 
 if (!globalRef.dashboardTerminalState) {
+  const shell = defaultTerminalShell();
   globalRef.dashboardTerminalState = {
     lines: [],
     nextId: 1,
     manualProcess: null,
     isManualRunning: false,
     prompt: "user@localhost workspace",
+    promptSuffix: terminalPromptSuffix(shell),
+    shell,
   };
 }
 
@@ -50,7 +56,7 @@ export function buildTerminalPrompt(workspacePath: string): string {
   try {
     username = os.userInfo().username;
   } catch {
-    username = process.env.USER || "user";
+    username = process.env.USER || process.env.USERNAME || "user";
   }
 
   let hostname = "localhost";
@@ -66,8 +72,17 @@ export function setTerminalPrompt(prompt: string) {
   state.prompt = prompt;
 }
 
+export function setTerminalShell(shell: string) {
+  state.shell = shell || defaultTerminalShell();
+  state.promptSuffix = terminalPromptSuffix(state.shell);
+}
+
 export function getTerminalPrompt(): string {
   return state.prompt;
+}
+
+export function getTerminalPromptSuffix(): string {
+  return state.promptSuffix;
 }
 
 export function appendTerminalLine(text: string, kind: TerminalLineKind = "output") {
@@ -87,7 +102,7 @@ export function appendTerminalLine(text: string, kind: TerminalLineKind = "outpu
 
 export function logTerminalCommand(command: string, source = "omnisync") {
   appendTerminalLine(`── ${source} ──`, "system");
-  appendTerminalLine(`${state.prompt} % ${command}`, "command");
+  appendTerminalLine(`${state.prompt} ${state.promptSuffix} ${command}`, "command");
 }
 
 export function clearTerminal() {
@@ -99,12 +114,22 @@ export function getTerminalSnapshot(sinceId = 0) {
   return {
     lines,
     prompt: state.prompt,
+    promptSuffix: state.promptSuffix,
+    shell: state.shell,
     isManualRunning: state.isManualRunning,
     lastId: state.lines.length > 0 ? state.lines[state.lines.length - 1].id : 0,
   };
 }
 
-export async function runManualTerminalCommand(cwd: string, command: string): Promise<number> {
+function splitProcessLines(text: string): string[] {
+  return text.split(/\r?\n/);
+}
+
+export async function runManualTerminalCommand(
+  cwd: string,
+  command: string,
+  shell?: string
+): Promise<number> {
   if (state.isManualRunning) {
     appendTerminalLine("Another command is still running. Wait for it to finish.", "error");
     return 1;
@@ -113,12 +138,15 @@ export async function runManualTerminalCommand(cwd: string, command: string): Pr
   const trimmed = command.trim();
   if (!trimmed) return 0;
 
+  if (shell) setTerminalShell(shell);
+
   logTerminalCommand(trimmed, "manual");
   state.isManualRunning = true;
 
   return new Promise((resolve) => {
     const child = spawnLoginCommand(trimmed, {
       cwd,
+      shell: state.shell,
       env: buildWorkspaceChildEnv(cwd, {
         mode: terminalEnvModeForCommand(trimmed),
       }),
@@ -127,14 +155,11 @@ export async function runManualTerminalCommand(cwd: string, command: string): Pr
     state.manualProcess = child;
 
     const handleChunk = (data: Buffer, isError: boolean) => {
-      data
-        .toString()
-        .split("\n")
-        .forEach((line) => {
-          if (line.trim()) {
-            appendTerminalLine(line, isError ? "error" : "output");
-          }
-        });
+      splitProcessLines(data.toString()).forEach((line) => {
+        if (line.trim()) {
+          appendTerminalLine(line, isError ? "error" : "output");
+        }
+      });
     };
 
     child.stdout?.on("data", (data) => handleChunk(data, false));

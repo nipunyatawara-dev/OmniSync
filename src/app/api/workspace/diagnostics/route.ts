@@ -226,8 +226,30 @@ export async function GET(request: Request) {
   let npmVersion = "unknown";
   try {
     npmVersion = await new Promise<string>((resolve) => {
-      execFile(npmCmd, ["-v"], { encoding: "utf-8", timeout: 10000, env: augmentProcessEnv() }, (err, stdout) => {
-        resolve(err ? "unknown" : stdout.trim());
+      // Use spawnTool so Windows npm.cmd shims run with shell:true (execFile cannot).
+      const child = spawnTool("npm", ["-v"], { env: augmentProcessEnv() });
+      let stdout = "";
+      let stderr = "";
+      const timer = setTimeout(() => {
+        try {
+          child.kill();
+        } catch {}
+        resolve("unknown");
+      }, 10000);
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        resolve("unknown");
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        const text = stripTerminalEscapeSequences(stdout || stderr).trim();
+        resolve(code === 0 && text ? text.split(/\r?\n/).filter(Boolean).pop() || "unknown" : "unknown");
       });
     });
   } catch {}

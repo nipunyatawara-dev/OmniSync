@@ -15,6 +15,11 @@ const IDLE_POLL_MS = 4000;
 export function useDashboardTerminal() {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [prompt, setPrompt] = useState("user@localhost workspace");
+  const [promptSuffix, setPromptSuffix] = useState(
+    typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent)
+      ? ">"
+      : "%"
+  );
   const [isManualRunning, setIsManualRunning] = useState(false);
   const [input, setInput] = useState("");
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
@@ -71,6 +76,9 @@ export function useDashboardTerminal() {
 
       if (typeof data.prompt === "string") {
         setPrompt(data.prompt);
+      }
+      if (typeof data.promptSuffix === "string" && data.promptSuffix) {
+        setPromptSuffix(data.promptSuffix);
       }
       if (typeof data.isManualRunning === "boolean") {
         setIsManualRunning(data.isManualRunning);
@@ -195,6 +203,7 @@ export function useDashboardTerminal() {
   return {
     lines,
     prompt,
+    promptSuffix,
     input,
     setInput,
     height,

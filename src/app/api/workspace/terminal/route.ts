@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getActiveProfile } from "@/lib/profiles";
+import { getGlobalSettings } from "@/lib/globalSettings";
 import {
   appendTerminalLine,
   buildTerminalPrompt,
@@ -7,6 +8,7 @@ import {
   getTerminalSnapshot,
   runManualTerminalCommand,
   setTerminalPrompt,
+  setTerminalShell,
 } from "@/lib/dashboardTerminal";
 
 export async function GET(request: Request) {
@@ -15,6 +17,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No active workspace path" }, { status: 400 });
   }
 
+  const global = await getGlobalSettings();
+  setTerminalShell(global.terminalShell);
   setTerminalPrompt(buildTerminalPrompt(profile.workspacePath));
 
   const since = Number(new URL(request.url).searchParams.get("since") || "0");
@@ -34,8 +38,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Command is required" }, { status: 400 });
     }
 
+    const global = await getGlobalSettings();
+    setTerminalShell(global.terminalShell);
     setTerminalPrompt(buildTerminalPrompt(profile.workspacePath));
-    const exitCode = await runManualTerminalCommand(profile.workspacePath, command);
+    const exitCode = await runManualTerminalCommand(
+      profile.workspacePath,
+      command,
+      global.terminalShell
+    );
     return NextResponse.json({
       success: exitCode === 0,
       exitCode,

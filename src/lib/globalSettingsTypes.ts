@@ -11,12 +11,27 @@ export interface GlobalSettings {
   accentColor: AccentColor;
 }
 
+/** Platform default for the dashboard terminal / runner shell preference. */
+export function defaultTerminalShell(
+  platform: NodeJS.Platform | string = typeof process !== "undefined" ? process.platform : "darwin"
+): string {
+  return platform === "win32" ? "powershell" : "zsh";
+}
+
+/** Prompt glyph shown after user@host folder in the terminal panel. */
+export function terminalPromptSuffix(shellId: string): string {
+  const id = (shellId || "").toLowerCase();
+  if (id === "powershell" || id === "pwsh" || id === "cmd") return ">";
+  if (id === "zsh") return "%";
+  return "$";
+}
+
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   gitUsername: "",
   gitEmail: "",
   defaultBranch: "main",
   autoFetchInterval: "5",
-  terminalShell: "zsh",
+  terminalShell: defaultTerminalShell(),
   showHiddenFiles: true,
   accentColor: "default",
 };

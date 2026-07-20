@@ -19,7 +19,11 @@ import {
   markWorkspaceReady,
 } from "@/lib/launchSession";
 import { consumeCloneStream } from "@/lib/cloneStream";
-import { joinWorkspacePath, parentWorkspacePath } from "@/lib/workspacePathJoin";
+import {
+  basenameWorkspacePath,
+  joinWorkspacePath,
+  parentWorkspacePath,
+} from "@/lib/workspacePathJoin";
 
 export default function SetupPage() {
   const router = useAppRouter();
@@ -462,7 +466,8 @@ export default function SetupPage() {
     setManualError("");
 
     try {
-      const workspaceRecordName = repoName || manualPath.split("/").pop() || "local-repo";
+      const workspaceRecordName =
+        repoName || basenameWorkspacePath(manualPath) || "local-repo";
       const profRes = await fetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

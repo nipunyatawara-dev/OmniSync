@@ -1,5 +1,5 @@
 /* eslint-disable */
-const { app, BrowserWindow, shell, ipcMain, dialog, nativeImage, session, safeStorage, utilityProcess } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, dialog, nativeImage, session, safeStorage, utilityProcess, Menu } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
@@ -332,6 +332,8 @@ function createWindow() {
     minHeight: 700,
     ...(iconPath ? { icon: iconPath } : {}),
     ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" } : {}),
+    // Windows/Linux: hide the default File/Edit/View/Window menu bar.
+    autoHideMenuBar: process.platform !== "darwin",
     backgroundColor: "#0d1117",
     show: false, // Don't show until ready-to-show
     webPreferences: {
@@ -340,6 +342,10 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  if (process.platform !== "darwin") {
+    Menu.setApplicationMenu(null);
+  }
 
   // Set Dock icon on macOS
   if (process.platform === "darwin" && iconPath) {

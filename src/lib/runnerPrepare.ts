@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { spawnLoginCommand } from "@/lib/shellEnv";
+import { spawnLoginCommand, spawnTool } from "@/lib/shellEnv";
 import { resolveDependencyInstallArgs } from "@/lib/npmInstall";
 import { buildWorkspaceChildEnv } from "@/lib/workspaceProcessEnv";
 
@@ -23,34 +23,85 @@ function isProductionRunCommand(runCommand: string): boolean {
   return /\bstart\b/.test(cmd) || cmd.includes("next start") || cmd.includes("run preview");
 }
 
+function splitProcessLines(text: string): string[] {
+  return text.split(/\r?\n/);
+}
+
+function attachProcessLogs(
+  child: { stdout?: NodeJS.ReadableStream | null; stderr?: NodeJS.ReadableStream | null },
+  onLine?: (line: string) => void
+) {
+  const handleData = (data: Buffer, isError = false) => {
+    const prefix = isError ? "[ERROR] " : "";
+    splitProcessLines(data.toString()).forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed) onLine?.(`${prefix}${trimmed}`);
+    });
+  };
+
+  child.stdout?.on("data", (data: Buffer) => handleData(data));
+  child.stderr?.on("data", (data: Buffer) => handleData(data, true));
+}
+
 export async function runShellCommand(
   cwd: string,
   command: string,
-  onLine?: (line: string) => void
+  onLine?: (line: string) => void,
+  shell?: string
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawnLoginCommand(command, {
       cwd,
+      shell,
       env: buildWorkspaceChildEnv(cwd, { mode: "development" }),
     });
 
-    const handleData = (data: Buffer, isError = false) => {
-      const prefix = isError ? "[ERROR] " : "";
-      data
-        .toString()
-        .split("\n")
-        .forEach((line) => {
-          const trimmed = line.trim();
-          if (trimmed) onLine?.(`${prefix}${trimmed}`);
-        });
-    };
-
-    child.stdout?.on("data", (data) => handleData(data));
-    child.stderr?.on("data", (data) => handleData(data, true));
-
+    attachProcessLogs(child, onLine);
     child.on("error", (err) => reject(err));
     child.on("close", (code) => resolve(code ?? 1));
   });
+}
+
+/** Prefer direct npm argv spawn so Windows does not need a login shell for installs. */
+export async function runNpmCommand(
+  cwd: string,
+  args: string[],
+  onLine?: (line: string) => void
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawnTool("npm", args, {
+      cwd,
+      env: buildWorkspaceChildEnv(cwd, { mode: "development" }),
+    });
+
+    attachProcessLogs(child, onLine);
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => resolve(code ?? 1));
+  });
+}
+
+async function runPrepareCommand(
+  cwd: string,
+  command: string,
+  onLine?: (line: string) => void,
+  shell?: string
+): Promise<number> {
+  const trimmed = command.trim();
+  const npmRun = trimmed.match(/^npm\s+run\s+(\S+)(.*)$/i);
+  if (npmRun) {
+    const script = npmRun[1];
+    const rest = npmRun[2].trim();
+    const extra = rest ? rest.split(/\s+/).filter(Boolean) : [];
+    return runNpmCommand(cwd, ["run", script, ...extra], onLine);
+  }
+
+  const npmBare = trimmed.match(/^npm\s+(.+)$/i);
+  if (npmBare) {
+    const extra = npmBare[1].trim().split(/\s+/).filter(Boolean);
+    return runNpmCommand(cwd, extra, onLine);
+  }
+
+  return runShellCommand(cwd, trimmed, onLine, shell);
 }
 
 export async function prepareWorkspaceForRunner(
@@ -58,10 +109,11 @@ export async function prepareWorkspaceForRunner(
   options: {
     runCommand: string;
     buildCommand?: string;
+    shell?: string;
     onLog?: (line: string) => void;
   }
 ): Promise<void> {
-  const { runCommand, buildCommand = "npm run build", onLog } = options;
+  const { runCommand, buildCommand = "npm run build", shell, onLog } = options;
   const log = (line: string) => onLog?.(line);
 
   const packageJsonPath = path.join(cwd, "package.json");
@@ -86,7 +138,7 @@ export async function prepareWorkspaceForRunner(
     const installCommand = `npm ${installArgs.join(" ")}`;
     log("node_modules is missing - installing dependencies first...");
     log(`Executing: ${installCommand}`);
-    const installCode = await runShellCommand(cwd, installCommand, log);
+    const installCode = await runNpmCommand(cwd, installArgs, log);
     if (installCode !== 0) {
       throw new Error(`Dependency install failed with exit code ${installCode}`);
     }
@@ -103,7 +155,7 @@ export async function prepareWorkspaceForRunner(
   if (shouldBuild) {
     log(".next build output is missing - running build command before starting server...");
     log(`Executing: ${buildCommand}`);
-    const buildCode = await runShellCommand(cwd, buildCommand, log);
+    const buildCode = await runPrepareCommand(cwd, buildCommand, log, shell);
     if (buildCode !== 0) {
       throw new Error(`Build failed with exit code ${buildCode}`);
     }

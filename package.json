@@ -21,7 +21,10 @@
     "electron:pack:mac-x64": "npm run build:electron && electron-builder --mac dir --x64 --config electron-builder.config.mjs",
     "electron:build:mac-arm64": "npm run build:electron && electron-builder --mac dmg --arm64 --config electron-builder.config.mjs",
     "electron:build:mac-x64": "npm run build:electron && electron-builder --mac dmg --x64 --config electron-builder.config.mjs",
-    "electron:build:mac": "npm run electron:build:mac-arm64 && npm run electron:build:mac-x64"
+    "electron:build:mac": "npm run electron:build:mac-arm64 && npm run electron:build:mac-x64",
+    "electron:pack:win": "npm run build:electron && electron-builder --win dir --x64 --config electron-builder.config.mjs",
+    "electron:build:win": "npm run build:electron && electron-builder --win nsis --x64 --config electron-builder.config.mjs",
+    "electron:build:win-arm64": "npm run build:electron && electron-builder --win nsis --arm64 --config electron-builder.config.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.5",
@@ -41,6 +44,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "png-to-ico": "^3.0.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"

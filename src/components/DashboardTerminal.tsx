@@ -9,6 +9,7 @@ const MIN_VISIBLE = 120;
 interface DashboardTerminalProps {
   lines: TerminalLine[];
   prompt: string;
+  promptSuffix: string;
   input: string;
   setInput: (value: string) => void;
   height: number;
@@ -27,6 +28,7 @@ interface DashboardTerminalProps {
 export default function DashboardTerminal({
   lines,
   prompt,
+  promptSuffix,
   input,
   setInput,
   height,
@@ -178,7 +180,8 @@ export default function DashboardTerminal({
           >
             {lines.length === 0 ? (
               <div style={{ color: "#6e7681" }}>
-                {prompt} % <span style={{ opacity: 0.7 }}>type a command and press Enter</span>
+                {prompt} {promptSuffix}{" "}
+                <span style={{ opacity: 0.7 }}>type a command and press Enter</span>
               </div>
             ) : (
               lines.map((line) => (
@@ -211,7 +214,7 @@ export default function DashboardTerminal({
             }}
           >
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "#3fb950", whiteSpace: "nowrap" }}>
-              {prompt} %
+              {prompt} {promptSuffix}
             </span>
             <input
               type="text"

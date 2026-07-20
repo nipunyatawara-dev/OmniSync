@@ -12,6 +12,11 @@ interface GlobalSettingsViewProps {
   section: "general" | "git";
 }
 
+function isWindowsClient() {
+  if (typeof navigator === "undefined") return false;
+  return /Win/i.test(navigator.platform || "") || /Windows/i.test(navigator.userAgent || "");
+}
+
 const cardStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -85,12 +90,24 @@ export default function GlobalSettingsView({
               value={settings.terminalShell}
               onChange={(e) => onUpdate("terminalShell", e.target.value)}
             >
-              <option value="zsh">zsh (macOS default)</option>
-              <option value="bash">bash</option>
-              <option value="fish">fish</option>
-              <option value="sh">sh</option>
+              {isWindowsClient() ? (
+                <>
+                  <option value="powershell">PowerShell (Windows default)</option>
+                  <option value="cmd">Command Prompt (cmd)</option>
+                  <option value="bash">Git Bash</option>
+                </>
+              ) : (
+                <>
+                  <option value="zsh">zsh (macOS default)</option>
+                  <option value="bash">bash</option>
+                  <option value="fish">fish</option>
+                  <option value="sh">sh</option>
+                </>
+              )}
             </select>
-            <span style={hintStyle}>Shell used when starting the development server runner.</span>
+            <span style={hintStyle}>
+              Shell used for the dashboard terminal and free-form runner commands.
+            </span>
           </div>
 
           <label

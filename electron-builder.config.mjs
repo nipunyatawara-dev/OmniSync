@@ -4,7 +4,12 @@ import pkg from "./package.json" with { type: "json" };
 export default {
   appId: "com.omnisync.app",
   productName: "OmniSync",
-  artifactName: `OmniSync v${pkg.omnisyncRelease}-mac-\${arch}.\${ext}`,
+  // NSIS footer shows package.json "version". Override the npm stub (0.1.0)
+  // with the marketing release label so the installer shows "OmniSync 0.4b".
+  extraMetadata: {
+    version: pkg.omnisyncRelease,
+  },
+  artifactName: `OmniSync v${pkg.omnisyncRelease}-\${os}-\${arch}.\${ext}`,
   directories: {
     output: "dist",
   },
@@ -46,6 +51,14 @@ export default {
   },
   win: {
     target: ["nsis"],
+    icon: "build/icon.ico",
+  },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: "OmniSync",
   },
   linux: {
     target: ["AppImage"],

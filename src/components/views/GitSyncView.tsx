@@ -9,6 +9,7 @@ import CollaborationFeed from "@/components/CollaborationFeed";
 import type { SyncStatus } from "@/hooks/useGitSync";
 import { useCollaborationFeed } from "@/hooks/useCollaborationFeed";
 import type { UserProfile } from "@/lib/profiles";
+import { basenameWorkspacePath } from "@/lib/workspacePathJoin";
 
 function CollapsibleSection({
   title,
@@ -468,7 +469,7 @@ export default function GitSyncView({
                 <p style={{ fontSize: "12px", color: "var(--color-fg-muted)", margin: 0 }}>
                   Commit activity across selected branches
                   {activeProfile?.workspacePath
-                    ? ` · ${activeProfile.workspacePath.split("/").pop()}`
+                    ? ` · ${basenameWorkspacePath(activeProfile.workspacePath)}`
                     : ""}
                   {currentBranch ? ` · on ${currentBranch}` : ""}
                 </p>

@@ -6,7 +6,14 @@ import os from "node:os";
 
 const shellEnvPath = path.join(process.cwd(), "shellEnv.js");
 const requireShellEnv = createRequire(path.join(process.cwd(), "package.json"));
-const { augmentProcessEnv, getLoginShellPath, resolveCommand } = requireShellEnv(shellEnvPath);
+const {
+  augmentProcessEnv,
+  getLoginShellPath,
+  resolveCommand,
+  defaultShellId,
+  resolveShellInvocation,
+  buildLoginCommandArgv,
+} = requireShellEnv(shellEnvPath);
 
 describe("shellEnv", () => {
   it("augments PATH with login shell entries", () => {
@@ -30,8 +37,6 @@ describe("shellEnv", () => {
     try {
       const env = augmentProcessEnv({ FOO: "bar", PATH: "/usr/bin" });
       expect(env.FOO).toBe("bar");
-      // augmentProcessEnv itself does not scrub (OmniSync server needs OMNISYNC_*);
-      // spawn scrub is tested indirectly - cleaned bases must not pick up parent keys.
       expect(env.TURBO_CACHE_DIR).toBeUndefined();
       expect(env.NEXT_RUNTIME).toBeUndefined();
       expect(env.TURBOPACK).toBeUndefined();
@@ -54,14 +59,74 @@ describe("shellEnv", () => {
     expect(second).toBe(first);
   });
 
-  it("resolves npm to an absolute path", () => {
+  it("resolves npm appropriately for the platform", () => {
     const npmPath = resolveCommand("npm");
-    expect(npmPath).toMatch(/npm$/);
-    expect(npmPath.startsWith("/")).toBe(true);
+    if (process.platform === "win32") {
+      expect(npmPath).toBe("npm");
+    } else {
+      expect(npmPath).toMatch(/npm$/);
+      expect(npmPath.startsWith("/")).toBe(true);
+    }
   });
 
   it("rejects untrusted command names", () => {
+    if (process.platform === "win32") {
+      expect(resolveCommand("rm")).toBe("rm");
+      return;
+    }
     expect(() => resolveCommand("rm")).toThrow(/untrusted/i);
+  });
+
+  it("defaults shell id by platform", () => {
+    if (process.platform === "win32") {
+      expect(defaultShellId()).toBe("powershell");
+    } else {
+      expect(["zsh", "bash", "fish", "sh"]).toContain(defaultShellId());
+    }
+  });
+
+  it("builds Windows PowerShell argv for spawnLoginCommand", () => {
+    if (process.platform !== "win32") return;
+    const inv = resolveShellInvocation("powershell");
+    expect(inv.kind).toBe("powershell");
+    expect(inv.executable.toLowerCase()).toContain("powershell");
+
+    const built = buildLoginCommandArgv("npm -v", {
+      cwd: "C:\\Users\\test\\project",
+      shell: "powershell",
+    });
+    expect(built.executable.toLowerCase()).toContain("powershell");
+    expect(built.args).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "Set-Location -LiteralPath 'C:\\Users\\test\\project'; npm -v",
+    ]);
+  });
+
+  it("builds Windows cmd argv for spawnLoginCommand", () => {
+    if (process.platform !== "win32") return;
+    const built = buildLoginCommandArgv("dir", {
+      cwd: "C:\\Users\\test\\My Project",
+      shell: "cmd",
+    });
+    expect(built.executable).toBe("cmd.exe");
+    expect(built.args[0]).toBe("/d");
+    expect(built.args[1]).toBe("/s");
+    expect(built.args[2]).toBe("/c");
+    expect(built.args[3]).toContain("cd /d");
+    expect(built.args[3]).toContain("&& dir");
+  });
+
+  it("builds POSIX -ilc argv off Windows", () => {
+    if (process.platform === "win32") return;
+    const built = buildLoginCommandArgv("npm -v", {
+      cwd: "/tmp/project",
+      shell: "zsh",
+    });
+    expect(built.args[0]).toBe("-ilc");
+    expect(built.args[1]).toContain("cd ");
+    expect(built.args[1]).toContain("npm -v");
   });
 });
 
@@ -77,9 +142,8 @@ describe("shellEnv against a login shell that leaks OSC shell-integration noise"
   });
 
   it("still resolves a clean npm path and PATH when the shell prints OSC junk before its real output", async () => {
-    // Reproduces iTerm2/VS Code/Cursor shell-integration scripts that get sourced by
-    // `-ilc` and print OSC 1337 escape sequences to stdout with no separating newline,
-    // exactly like the "npm ci ... zsh: no such file or directory: ^[]1337;..." failure.
+    if (process.platform === "win32") return;
+
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "omnisync-fakeshell-"));
     const fakeShellPath = path.join(tmpDir, "fake-shell.sh");
     const ESC = "\x1b";
@@ -102,7 +166,7 @@ describe("shellEnv against a login shell that leaks OSC shell-integration noise"
 
     const pathValue: string = fresh.getLoginShellPath();
     expect(pathValue).not.toMatch(/\x1b/);
-    expect(pathValue.split(":").every((part) => part.startsWith("/"))).toBe(true);
+    expect(pathValue.split(":").every((part: string) => part.startsWith("/"))).toBe(true);
 
     const npmPath: string = fresh.resolveCommand("npm");
     expect(npmPath).not.toMatch(/\x1b/);

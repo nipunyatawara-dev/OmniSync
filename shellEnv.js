@@ -1,15 +1,13 @@
 const { execFileSync, spawn } = require("child_process");
+const fs = require("fs");
 const os = require("os");
+const path = require("path");
 
 let cachedLoginPath = null;
 const commandCache = new Map();
 
 /** Only these tool names may be resolved via the login shell. */
 const ALLOWED_RESOLVE_COMMANDS = new Set(["git", "npm", "node", "npx", "yarn", "pnpm", "gh", "brew"]);
-
-function getLoginShell() {
-  return process.env.SHELL || "/bin/zsh";
-}
 
 /**
  * Interactive login shells (`-ilc`) source ~/.zshrc, which on many machines includes
@@ -104,6 +102,94 @@ function baseSpawnEnv(base = process.env) {
   delete env.npm_config_prefix;
   delete env.NPM_CONFIG_PREFIX;
   return env;
+}
+
+/** Platform default shell preference id (settings / spawnLoginCommand). */
+function defaultShellId() {
+  if (process.platform === "win32") return "powershell";
+  const shell = process.env.SHELL || "";
+  if (shell.includes("bash")) return "bash";
+  if (shell.includes("fish")) return "fish";
+  if (shell.includes("zsh")) return "zsh";
+  if (shell.endsWith("/sh") || shell === "sh") return "sh";
+  return "zsh";
+}
+
+function fileExists(candidate) {
+  try {
+    return Boolean(candidate) && fs.existsSync(candidate);
+  } catch {
+    return false;
+  }
+}
+
+function findGitBash() {
+  const candidates = [
+    process.env.OMNISYNC_GIT_BASH,
+    process.env.PROGRAMFILES ? pathJoin(process.env.PROGRAMFILES, "Git", "bin", "bash.exe") : null,
+    process.env["PROGRAMFILES(X86)"]
+      ? pathJoin(process.env["PROGRAMFILES(X86)"], "Git", "bin", "bash.exe")
+      : null,
+    process.env.LOCALAPPDATA
+      ? pathJoin(process.env.LOCALAPPDATA, "Programs", "Git", "bin", "bash.exe")
+      : null,
+  ];
+  for (const candidate of candidates) {
+    if (fileExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+function resolvePosixShellPath(shellId) {
+  const id = (shellId || defaultShellId()).toLowerCase();
+  if (process.env.SHELL && path.basename(process.env.SHELL).replace(/\.exe$/i, "") === id) {
+    return process.env.SHELL;
+  }
+  const map = {
+    zsh: ["/bin/zsh", "/usr/bin/zsh", "/usr/local/bin/zsh", "/opt/homebrew/bin/zsh"],
+    bash: ["/bin/bash", "/usr/bin/bash", "/usr/local/bin/bash", "/opt/homebrew/bin/bash"],
+    fish: ["/usr/bin/fish", "/usr/local/bin/fish", "/opt/homebrew/bin/fish"],
+    sh: ["/bin/sh", "/usr/bin/sh"],
+  };
+  const list = map[id] || map.zsh;
+  for (const candidate of list) {
+    if (fileExists(candidate)) return candidate;
+  }
+  return process.env.SHELL || list[0];
+}
+
+/**
+ * Resolve a settings shell id into an executable + spawn strategy.
+ * @param {string} [shellId]
+ * @returns {{ id: string, kind: "powershell" | "cmd" | "posix", executable: string }}
+ */
+function resolveShellInvocation(shellId) {
+  const id = String(shellId || defaultShellId()).toLowerCase().trim() || defaultShellId();
+
+  if (process.platform === "win32") {
+    if (id === "powershell" || id === "pwsh") {
+      const pwsh = id === "pwsh" && fileExists("C:\\Program Files\\PowerShell\\7\\pwsh.exe")
+        ? "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+        : "powershell.exe";
+      return { id: id === "pwsh" ? "pwsh" : "powershell", kind: "powershell", executable: pwsh };
+    }
+    if (id === "cmd" || id === "cmd.exe") {
+      return { id: "cmd", kind: "cmd", executable: "cmd.exe" };
+    }
+    // bash/zsh/fish/sh → Git Bash when available, else PowerShell
+    const gitBash = findGitBash();
+    if (gitBash && (id === "bash" || id === "zsh" || id === "sh" || id === "fish")) {
+      return { id, kind: "posix", executable: gitBash };
+    }
+    return { id: "powershell", kind: "powershell", executable: "powershell.exe" };
+  }
+
+  return { id, kind: "posix", executable: resolvePosixShellPath(id) };
+}
+
+/** @deprecated Prefer resolveShellInvocation; kept for PATH probing on Unix. */
+function getLoginShell() {
+  return resolveShellInvocation().executable;
 }
 
 function getLoginShellPath() {
@@ -202,11 +288,61 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\"'\"'`)}'`;
 }
 
+function powershellQuote(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function cmdQuotePath(value) {
+  const s = String(value);
+  if (/[\s&<>|^()]/.test(s)) return `"${s.replace(/"/g, "")}"`;
+  return s;
+}
+
 /**
- * Run a command through the user's login shell (nvm/fnm/volta PATH).
- * Always `cd` into cwd inside the shell so profile scripts cannot leave the
- * process in the wrong directory.
+ * Build argv for a one-shot command through the resolved shell.
+ * Exported for unit tests.
+ * @param {string} commandLine
+ * @param {{ cwd?: string, shell?: string }} [options]
  */
+function buildLoginCommandArgv(commandLine, options = {}) {
+  const invocation = resolveShellInvocation(options.shell);
+  const cwd = options.cwd;
+
+  if (invocation.kind === "powershell") {
+    const wrapped =
+      cwd && typeof cwd === "string" && cwd.length > 0
+        ? `Set-Location -LiteralPath ${powershellQuote(cwd)}; ${commandLine}`
+        : commandLine;
+    return {
+      executable: invocation.executable,
+      args: ["-NoProfile", "-NonInteractive", "-Command", wrapped],
+      windowsHide: true,
+    };
+  }
+
+  if (invocation.kind === "cmd") {
+    const wrapped =
+      cwd && typeof cwd === "string" && cwd.length > 0
+        ? `cd /d ${cmdQuotePath(cwd)} && ${commandLine}`
+        : commandLine;
+    return {
+      executable: invocation.executable,
+      args: ["/d", "/s", "/c", wrapped],
+      windowsHide: true,
+    };
+  }
+
+  const wrapped =
+    cwd && typeof cwd === "string" && cwd.length > 0
+      ? `cd ${shellQuote(cwd)} && ${commandLine}`
+      : commandLine;
+  return {
+    executable: invocation.executable,
+    args: ["-ilc", wrapped],
+    windowsHide: process.platform === "win32",
+  };
+}
+
 function resolveSpawnEnv(options = {}) {
   // Prefer an explicit env object (including empty). Never silently fall back
   // when the caller passed env — that re-leaked OmniSync PORT/NODE_ENV.
@@ -225,16 +361,18 @@ function resolveSpawnEnv(options = {}) {
   return env;
 }
 
+/**
+ * Run a command through the user's preferred shell.
+ * Always `cd` into cwd inside the shell so profile scripts cannot leave the
+ * process in the wrong directory.
+ * options.shell — preference id: powershell | cmd | bash | zsh | fish | sh
+ */
 function spawnLoginCommand(commandLine, options = {}) {
-  const shell = getLoginShell();
-  const cwd = options.cwd;
-  const wrapped =
-    cwd && typeof cwd === "string" && cwd.length > 0
-      ? `cd ${shellQuote(cwd)} && ${commandLine}`
-      : commandLine;
-  return spawn(shell, ["-ilc", wrapped], {
-    cwd: cwd || undefined,
+  const { executable, args, windowsHide } = buildLoginCommandArgv(commandLine, options);
+  return spawn(executable, args, {
+    cwd: options.cwd || undefined,
     env: resolveSpawnEnv(options),
+    windowsHide: Boolean(windowsHide),
   });
 }
 
@@ -280,4 +418,7 @@ module.exports = {
   spawnTool,
   clearShellEnvCache,
   ALLOWED_RESOLVE_COMMANDS,
+  defaultShellId,
+  resolveShellInvocation,
+  buildLoginCommandArgv,
 };
