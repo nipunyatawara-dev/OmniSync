@@ -36,7 +36,10 @@ export interface DiagnosticDetails {
   nodeVersion: string;
   npmVersion: string;
   enginesNode: string;
+  enginesNpm?: string;
   isNodeCompatible: boolean;
+  isNpmAvailable?: boolean;
+  isNpmCompatible?: boolean;
   packageJsonExists: boolean;
   totalDependencies: number;
   missingDependencies: string[];

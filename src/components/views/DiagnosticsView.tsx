@@ -102,13 +102,31 @@ export default function DiagnosticsView({
               <div>
                 <div style={{ fontSize: "10px", color: "var(--color-fg-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>npm Package Manager</div>
                 <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", fontFamily: "var(--font-mono)" }}>
-                  {diagData.npmVersion && diagData.npmVersion !== "unknown"
+                  {diagData.isNpmAvailable !== false && diagData.npmVersion && diagData.npmVersion !== "unknown"
                     ? `v${diagData.npmVersion}`
                     : "—"}
                 </div>
               </div>
               <div style={{ marginTop: "12px" }}>
-                <span className="badge badge-info" style={{ fontSize: "10px", padding: "3px 8px" }}>System Installed</span>
+                {diagData.isNpmAvailable === false || !diagData.npmVersion || diagData.npmVersion === "unknown" ? (
+                  <span className="badge badge-danger" style={{ fontSize: "10px", padding: "3px 8px" }}>
+                    Not detected
+                  </span>
+                ) : diagData.enginesNpm && diagData.enginesNpm !== "*" ? (
+                  diagData.isNpmCompatible !== false ? (
+                    <span className="badge badge-success" style={{ fontSize: "10px", padding: "3px 8px" }}>
+                      Compatible ({diagData.enginesNpm})
+                    </span>
+                  ) : (
+                    <span className="badge badge-danger" style={{ fontSize: "10px", padding: "3px 8px" }}>
+                      Mismatch (Required: {diagData.enginesNpm})
+                    </span>
+                  )
+                ) : (
+                  <span className="badge badge-success" style={{ fontSize: "10px", padding: "3px 8px" }}>
+                    Detected
+                  </span>
+                )}
               </div>
             </div>
 

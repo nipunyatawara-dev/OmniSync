@@ -255,6 +255,7 @@ export async function GET(request: Request) {
   } catch {}
 
   let enginesNode = "*";
+  let enginesNpm = "*";
   let dependencies: Record<string, string> = {};
   const missingDeps: string[] = [];
   const dependencyDetails: { name: string; version: string; installed: boolean }[] = [];
@@ -270,6 +271,7 @@ export async function GET(request: Request) {
       const pkgContent = await fs.readFile(packageJsonPath, "utf-8");
       const pkg = JSON.parse(pkgContent);
       enginesNode = pkg.engines?.node || "*";
+      enginesNpm = pkg.engines?.npm || "*";
       dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
 
       projectName = pkg.name || projectName;
@@ -302,6 +304,34 @@ export async function GET(request: Request) {
       const activeMajor = parseInt(activeMajorMatch[0], 10);
       if (enginesNode.includes(">=") && activeMajor < requiredMajor) {
         isNodeCompatible = false;
+      } else if (
+        !enginesNode.includes(">=") &&
+        !enginesNode.includes(">") &&
+        !enginesNode.includes("<") &&
+        activeMajor !== requiredMajor
+      ) {
+        isNodeCompatible = false;
+      }
+    }
+  }
+
+  const isNpmAvailable = Boolean(npmVersion && npmVersion !== "unknown");
+  let isNpmCompatible = isNpmAvailable;
+  if (isNpmAvailable && enginesNpm !== "*") {
+    const requiredMajorMatch = enginesNpm.match(/\d+/);
+    const activeMajorMatch = npmVersion.match(/\d+/);
+    if (requiredMajorMatch && activeMajorMatch) {
+      const requiredMajor = parseInt(requiredMajorMatch[0], 10);
+      const activeMajor = parseInt(activeMajorMatch[0], 10);
+      if (enginesNpm.includes(">=") && activeMajor < requiredMajor) {
+        isNpmCompatible = false;
+      } else if (
+        !enginesNpm.includes(">=") &&
+        !enginesNpm.includes(">") &&
+        !enginesNpm.includes("<") &&
+        activeMajor !== requiredMajor
+      ) {
+        isNpmCompatible = false;
       }
     }
   }
@@ -369,7 +399,10 @@ export async function GET(request: Request) {
     nodeVersion,
     npmVersion,
     enginesNode,
+    enginesNpm,
     isNodeCompatible,
+    isNpmAvailable,
+    isNpmCompatible,
     packageJsonExists,
     totalDependencies: Object.keys(dependencies).length,
     missingDependencies: missingDeps,
